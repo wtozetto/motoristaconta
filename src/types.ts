@@ -149,6 +149,9 @@ export interface BackupPayload {
   version: number
   app: 'MotoristaConta'
   exportedAt: string
+  ultimaModificacao?: string
+  ultimaSincronizacao?: string
+  versaoSchema?: number
   settings: AppSettings
   registros: Registro[]
   manutencoes?: Manutencao[]

@@ -10,12 +10,7 @@ import {
 } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useData } from '../data/DataContext'
-import {
-  applyImport,
-  applyImportManutencoes,
-  parseBackupJson,
-  serializeBackup,
-} from '../lib/backup'
+import { parseBackupJson, serializeBackup } from '../lib/backup'
 import { useTheme } from '../theme/ThemeContext'
 import {
   ACESSOS_FILE_NAME,
@@ -25,8 +20,14 @@ import {
   findFileByName,
   upsertJsonFile,
 } from './api'
-import { backupStamp, decideSync } from './conflict'
+import { compararESincronizar } from './conflict'
 import { loadDriveFileIds, saveDriveFileIds } from './fileIds'
+import {
+  getLocalModificacaoStamp,
+  getLocalSincronizacaoStamp,
+  setLocalModificacaoStamp,
+  setLocalSincronizacaoStamp,
+} from './syncStorage'
 
 export type DriveStatus = 'idle' | 'connecting' | 'syncing' | 'ok' | 'offline' | 'error' | 'dev'
 
@@ -34,6 +35,7 @@ interface DriveContextValue {
   status: DriveStatus
   message: string | null
   lastSyncAt: string | null
+  isInitialSyncing: boolean
   syncNow: () => Promise<void>
   reconnect: () => Promise<void>
 }
@@ -48,7 +50,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   const { settings, updateSettings } = useTheme()
   const [status, setStatus] = useState<DriveStatus>('idle')
   const [message, setMessage] = useState<string | null>(null)
-  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null)
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(getLocalSincronizacaoStamp() || null)
+  const [isInitialSyncing, setIsInitialSyncing] = useState(
+    Boolean(session && session.googleId !== 'dev-bypass'),
+  )
+
   const readyRef = useRef(false)
   const skipNextRef = useRef(false)
   const timerRef = useRef<number | null>(null)
@@ -71,9 +77,18 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       nextRegistros = registros,
       nextManutencoes = manutencoes,
       nextSettings = settings,
+      nextModificacao = getLocalModificacaoStamp(),
+      nextSincronizacao = new Date().toISOString(),
     ) => {
       if (!session) return
-      const payload = serializeBackup(nextRegistros, nextSettings, nextManutencoes)
+      const payload = serializeBackup(
+        nextRegistros,
+        nextSettings,
+        nextManutencoes,
+        undefined,
+        nextModificacao,
+        nextSincronizacao,
+      )
       const ids = loadDriveFileIds(session.googleId)
       const file = await upsertJsonFile(
         accessToken,
@@ -82,9 +97,9 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         ids.dadosId,
       )
       persistIds({ dadosId: file.id })
-      setLastSyncAt(new Date().toISOString())
+      setLocalSincronizacaoStamp(nextSincronizacao)
+      setLastSyncAt(nextSincronizacao)
       setStatus('ok')
-      setMessage('Backup no Google Drive atualizado.')
     },
     [manutencoes, persistIds, registros, session, settings],
   )
@@ -129,10 +144,14 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           : null,
       )
       readyRef.current = true
+      setIsInitialSyncing(false)
       return
     }
+
     setStatus('connecting')
     setMessage('Conectando ao Google Drive…')
+    setIsInitialSyncing(true)
+
     try {
       const accessToken = await ensureDriveToken('')
       const ids = loadDriveFileIds(session.googleId)
@@ -150,31 +169,63 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           dadosId = undefined
         }
       }
+
       const remote = remoteRaw ? parseBackupJson(remoteRaw) : null
-      const localStamp = backupStamp(serializeBackup(registros, settings, manutencoes))
-      const totalLocalCount = registros.length + manutencoes.length
-      const decision = decideSync(totalLocalCount, localStamp, remote)
+      const now = new Date().toISOString()
+      const localMod = getLocalModificacaoStamp()
+      const localSync = getLocalSincronizacaoStamp()
+      const localPayload = serializeBackup(
+        registros,
+        settings,
+        manutencoes,
+        now,
+        localMod,
+        localSync,
+      )
+
+      // Compara e resolve a precedência e mesclagem registro a registro
+      const syncResult = compararESincronizar(localPayload, remote, now)
 
       let nextRegistros = registros
       let nextManutencoes = manutencoes
       let nextSettings = settings
-      if (decision === 'restore' && remote) {
+
+      if (syncResult.needsLocalUpdate) {
         skipNextRef.current = true
-        nextRegistros = applyImport(registros, remote.registros, 'merge')
-        nextManutencoes = applyImportManutencoes(manutencoes, remote.manutencoes ?? [], 'merge')
-        nextSettings = { ...settings, ...remote.settings }
+        nextRegistros = syncResult.mergedRegistros
+        nextManutencoes = syncResult.mergedManutencoes
+        nextSettings = syncResult.mergedPayload.settings
         await importRegistros(nextRegistros, 'replace')
         await importManutencoes(nextManutencoes, 'replace')
-        if (remote.settings) updateSettings(remote.settings)
-        setMessage('Dados restaurados do Google Drive (registros mais recentes prevalecem).')
+        if (syncResult.mergedPayload.settings) {
+          updateSettings(syncResult.mergedPayload.settings)
+        }
+        setLocalModificacaoStamp(
+          syncResult.mergedPayload.ultimaModificacao || syncResult.mergedPayload.ultimaSincronizacao,
+        )
       }
 
-      setStatus('syncing')
-      await uploadPayload(accessToken, nextRegistros, nextManutencoes, nextSettings)
+      if (syncResult.needsRemoteUpload) {
+        await uploadPayload(
+          accessToken,
+          nextRegistros,
+          nextManutencoes,
+          nextSettings,
+          syncResult.mergedPayload.ultimaModificacao,
+          syncResult.mergedPayload.ultimaSincronizacao,
+        )
+      }
+
+      setLocalSincronizacaoStamp(syncResult.mergedPayload.ultimaSincronizacao || now)
+      setLastSyncAt(syncResult.mergedPayload.ultimaSincronizacao || now)
+      setStatus('ok')
+      setMessage(syncResult.message)
       await writeAccessLog(accessToken)
       readyRef.current = true
+      setIsInitialSyncing(false)
     } catch (err) {
       readyRef.current = true
+      setIsInitialSyncing(false)
       setStatus('error')
       setMessage(
         err instanceof Error
@@ -207,6 +258,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialKey, loading])
 
+  // Debounce para envio automático quando o usuário altera dados localmente
   useEffect(() => {
     if (!readyRef.current || isDevBypass || loading) return
     if (skipNextRef.current) {
@@ -219,7 +271,16 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         try {
           setStatus('syncing')
           const accessToken = await ensureDriveToken('')
-          await uploadPayload(accessToken)
+          const now = new Date().toISOString()
+          await uploadPayload(
+            accessToken,
+            registros,
+            manutencoes,
+            settings,
+            getLocalModificacaoStamp() || now,
+            now,
+          )
+          setMessage('Sincronizado — dados locais estão mais atualizados, enviados ao Google Drive')
         } catch (err) {
           setStatus('error')
           setMessage(err instanceof Error ? err.message : 'Falha ao enviar backup.')
@@ -229,14 +290,104 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
     }
-  }, [ensureDriveToken, isDevBypass, loading, manutencoes, registros, settings, uploadPayload])
+  }, [
+    ensureDriveToken,
+    isDevBypass,
+    loading,
+    manutencoes,
+    registros,
+    settings,
+    uploadPayload,
+  ])
 
   const syncNow = useCallback(async () => {
-    if (isDevBypass) return
+    if (isDevBypass || !session) return
     setStatus('syncing')
-    const accessToken = await ensureDriveToken('')
-    await uploadPayload(accessToken)
-  }, [ensureDriveToken, isDevBypass, uploadPayload])
+    setMessage('Sincronizando com o Google Drive…')
+    try {
+      const accessToken = await ensureDriveToken('')
+      const ids = loadDriveFileIds(session.googleId)
+      let remoteRaw: string | null = null
+      let dadosId = ids.dadosId
+      if (!dadosId) {
+        const found = await findFileByName(accessToken, DADOS_FILE_NAME)
+        dadosId = found?.id
+        if (dadosId) persistIds({ dadosId })
+      }
+      if (dadosId) {
+        try {
+          remoteRaw = await downloadFileText(accessToken, dadosId)
+        } catch {
+          dadosId = undefined
+        }
+      }
+
+      const remote = remoteRaw ? parseBackupJson(remoteRaw) : null
+      const now = new Date().toISOString()
+      const localMod = getLocalModificacaoStamp()
+      const localSync = getLocalSincronizacaoStamp()
+      const localPayload = serializeBackup(
+        registros,
+        settings,
+        manutencoes,
+        now,
+        localMod,
+        localSync,
+      )
+
+      const syncResult = compararESincronizar(localPayload, remote, now)
+
+      let nextRegistros = registros
+      let nextManutencoes = manutencoes
+      let nextSettings = settings
+
+      if (syncResult.needsLocalUpdate) {
+        skipNextRef.current = true
+        nextRegistros = syncResult.mergedRegistros
+        nextManutencoes = syncResult.mergedManutencoes
+        nextSettings = syncResult.mergedPayload.settings
+        await importRegistros(nextRegistros, 'replace')
+        await importManutencoes(nextManutencoes, 'replace')
+        if (syncResult.mergedPayload.settings) {
+          updateSettings(syncResult.mergedPayload.settings)
+        }
+        setLocalModificacaoStamp(
+          syncResult.mergedPayload.ultimaModificacao || syncResult.mergedPayload.ultimaSincronizacao,
+        )
+      }
+
+      if (syncResult.needsRemoteUpload) {
+        await uploadPayload(
+          accessToken,
+          nextRegistros,
+          nextManutencoes,
+          nextSettings,
+          syncResult.mergedPayload.ultimaModificacao,
+          syncResult.mergedPayload.ultimaSincronizacao,
+        )
+      }
+
+      setLocalSincronizacaoStamp(syncResult.mergedPayload.ultimaSincronizacao || now)
+      setLastSyncAt(syncResult.mergedPayload.ultimaSincronizacao || now)
+      setStatus('ok')
+      setMessage(syncResult.message)
+    } catch (err) {
+      setStatus('error')
+      setMessage(err instanceof Error ? err.message : 'Falha ao sincronizar.')
+    }
+  }, [
+    ensureDriveToken,
+    importManutencoes,
+    importRegistros,
+    isDevBypass,
+    manutencoes,
+    persistIds,
+    registros,
+    session,
+    settings,
+    updateSettings,
+    uploadPayload,
+  ])
 
   const reconnect = useCallback(async () => {
     if (isDevBypass) return
@@ -246,8 +397,15 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   }, [ensureDriveToken, isDevBypass, runInitialSync])
 
   const value = useMemo(
-    () => ({ status, message, lastSyncAt, syncNow, reconnect }),
-    [status, message, lastSyncAt, syncNow, reconnect],
+    () => ({
+      status,
+      message,
+      lastSyncAt,
+      isInitialSyncing,
+      syncNow,
+      reconnect,
+    }),
+    [status, message, lastSyncAt, isInitialSyncing, syncNow, reconnect],
   )
 
   return <DriveContext.Provider value={value}>{children}</DriveContext.Provider>

@@ -12,11 +12,31 @@ import { buildCombustivelAggregate } from './fuel'
 
 export type ImportMode = 'merge' | 'replace'
 
+export function getLatestRecordStamp(data: {
+  registros?: Registro[]
+  manutencoes?: Manutencao[]
+}): string {
+  let max = ''
+  if (data.registros) {
+    for (const r of data.registros) {
+      if (r.atualizadoEm && r.atualizadoEm > max) max = r.atualizadoEm
+    }
+  }
+  if (data.manutencoes) {
+    for (const m of data.manutencoes) {
+      if (m.atualizadoEm && m.atualizadoEm > max) max = m.atualizadoEm
+    }
+  }
+  return max
+}
+
 export function serializeBackup(
   registros: Registro[],
   settings: AppSettings,
   manutencoesOrExportedAt?: Manutencao[] | string,
   exportedAtArg?: string,
+  ultimaModificacao?: string,
+  ultimaSincronizacao?: string,
 ): BackupPayload {
   let manutencoes: Manutencao[] = []
   let exportedAt = new Date().toISOString()
@@ -30,10 +50,16 @@ export function serializeBackup(
     exportedAt = exportedAtArg
   }
 
+  const recStamp = getLatestRecordStamp({ registros, manutencoes })
+  const modStamp = ultimaModificacao || recStamp || exportedAt
+
   return {
     version: BACKUP_VERSION,
+    versaoSchema: BACKUP_VERSION,
     app: 'MotoristaConta',
     exportedAt,
+    ultimaModificacao: modStamp,
+    ultimaSincronizacao: ultimaSincronizacao || exportedAt,
     settings,
     registros: structuredClone(registros),
     manutencoes: structuredClone(manutencoes),
@@ -45,9 +71,18 @@ export function backupToJson(
   settings: AppSettings,
   manutencoesOrExportedAt?: Manutencao[] | string,
   exportedAt?: string,
+  ultimaModificacao?: string,
+  ultimaSincronizacao?: string,
 ): string {
   return JSON.stringify(
-    serializeBackup(registros, settings, manutencoesOrExportedAt, exportedAt),
+    serializeBackup(
+      registros,
+      settings,
+      manutencoesOrExportedAt,
+      exportedAt,
+      ultimaModificacao,
+      ultimaSincronizacao,
+    ),
     null,
     2,
   )
@@ -70,10 +105,28 @@ export function parseBackupJson(raw: string): BackupPayload {
     ...DEFAULT_SETTINGS,
     ...(data.settings ?? {}),
   }
+  const exportedAt =
+    typeof data.exportedAt === 'string' ? data.exportedAt : new Date().toISOString()
+  const ultimaSincronizacao =
+    typeof data.ultimaSincronizacao === 'string' ? data.ultimaSincronizacao : exportedAt
+  const ultimaModificacao =
+    typeof data.ultimaModificacao === 'string'
+      ? data.ultimaModificacao
+      : ultimaSincronizacao
+  const versaoSchema =
+    typeof data.versaoSchema === 'number'
+      ? data.versaoSchema
+      : typeof data.version === 'number'
+        ? data.version
+        : BACKUP_VERSION
+
   return {
     version: typeof data.version === 'number' ? data.version : BACKUP_VERSION,
+    versaoSchema,
     app: 'MotoristaConta',
-    exportedAt: typeof data.exportedAt === 'string' ? data.exportedAt : new Date().toISOString(),
+    exportedAt,
+    ultimaModificacao,
+    ultimaSincronizacao,
     settings,
     registros,
     manutencoes,

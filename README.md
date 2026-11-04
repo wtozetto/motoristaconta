@@ -70,14 +70,67 @@ Se a CLI / conta Vercel não estiver logada, o projeto já está pronto: `vercel
 ## Backup no Google Drive (automático)
 
 1. Entre com Google. O navegador pede permissão para criar arquivos no Drive.
-2. O app cria/atualiza `MotoristaConta-dados.json` (lançamentos + preferências) e `MotoristaConta-acessos.json` (log de entrada).
+2. O app cria/atualiza `MotoristaConta-dados.json` (lançamentos + manutenções + preferências) e `MotoristaConta-acessos.json` (log de entrada).
 3. Depois de cada salvamento, espera ~2 segundos e envia de novo.
-4. Se o IndexedDB estiver vazio e o Drive tiver backup, restaura. Se os dois tiverem dados, o conjunto mais recente (`atualizadoEm` / `exportedAt`) vence; registros são mesclados por `id`.
+4. Se o IndexedDB estiver vazio e o Drive tiver backup, restaura. Se os dois tiverem dados, a **Sincronização Inteligente** resolve qual versão prevalece.
 5. Em **Configurações**: **Sincronizar agora** ou **Reconectar Drive** se o token expirar.
 
 Cópia extra neste aparelho: **Exportar JSON** / **Exportar CSV** / **Importar JSON**.
 
 Modo de teste (`VITE_DEV_BYPASS_AUTH`) **não** fala com o Drive.
+
+## Sincronização Inteligente (Drive × Aparelho)
+
+O app implementa sincronização bidirecional com **precedência pela versão mais recente**, garantindo que nenhum dado seja perdido.
+
+### Campos de controle
+
+| Campo | Descrição |
+| --- | --- |
+| `ultimaModificacao` | Data/hora da última alteração nos dados locais (salvar, editar ou excluir um lançamento ou manutenção). |
+| `ultimaSincronizacao` | Data/hora da última troca bem-sucedida com o Google Drive. |
+| `atualizadoEm` | Timestamp individual de cada registro (lançamento ou manutenção). |
+
+### Lógica de precedência
+
+Ao abrir o app, fazer login ou clicar **Sincronizar agora**:
+
+1. Carrega `dadosLocal` (IndexedDB) e `dadosRemoto` (Google Drive).
+2. Compara `ultimaModificacao` de cada fonte (`ultimaSincronizacao` como fallback).
+3. A versão com **data/hora mais recente** é considerada a verdadeira e prevalece.
+4. Essa versão é sincronizada para o outro lado (o mais antigo é atualizado).
+5. Se forem iguais → sem ação.
+
+### Mesclagem por registro
+
+Quando ambos os lados possuem dados, a sincronização **não** substitui todo o arquivo — ela compara **cada registro individualmente**:
+
+- Se o registro existe **só em um lado** → é incluído no resultado.
+- Se existe **nos dois** com o mesmo `id` → prevalece o que tem `atualizadoEm` mais recente.
+- Após mesclar → grava o resultado final **tanto no aparelho quanto no Drive**.
+
+### Feedback visual
+
+| Cor | Mensagem | Significado |
+| --- | --- | --- |
+| ✅ Verde | *Sincronizado — dados locais estão mais atualizados, enviados ao Google Drive* | Dados locais prevaleceram. |
+| ✅ Verde | *Sincronizado — versão mais recente do Google Drive aplicada* | Dados do Drive prevaleceram. |
+| ⚠️ Amarelo | *Mesclagem realizada — existiam alterações nos dois lados* | Houve merge bidirecional. |
+| ✅ Verde | *Sistema já está atualizado* | Nenhuma diferença encontrada. |
+| 🔴 Vermelho | Mensagem de erro | Falha na conexão ou operação. |
+
+### Migração de backups existentes
+
+Backups criados antes desta funcionalidade não possuem o campo `ultimaModificacao`. Para atualizá-los manualmente no Drive:
+
+```bash
+# Defina o token de acesso ao Google Drive e execute:
+GOOGLE_DRIVE_TOKEN=<seu_token> npm run migrate-backup
+```
+
+O script busca `MotoristaConta-dados.json` no Drive, insere `ultimaModificacao = ultimaSincronizacao` quando ausente, e reenvia o arquivo atualizado.
+
+> **Nota:** Na prática, o app já faz essa migração automaticamente na primeira abertura — o script é útil apenas para atualizar o arquivo no Drive sem abrir o aplicativo.
 
 ## Estrutura do JSON de backup
 
@@ -86,10 +139,15 @@ Modo de teste (`VITE_DEV_BYPASS_AUTH`) **não** fala com o Drive.
   "version": 1,
   "app": "MotoristaConta",
   "exportedAt": "2026-10-14T16:00:00.000Z",
+  "ultimaModificacao": "2026-10-14T20:15:00.000Z",
+  "ultimaSincronizacao": "2026-10-14T20:16:00.000Z",
+  "versaoSchema": 1,
   "settings": {
     "metaRsPorKm": 2.5,
     "reservaPercent": 15,
-    "theme": "system"
+    "theme": "system",
+    "alertaManutencaoDias": 30,
+    "alertaManutencaoKm": 500
   },
   "registros": [
     {
@@ -98,10 +156,21 @@ Modo de teste (`VITE_DEV_BYPASS_AUTH`) **não** fala com o Drive.
       "kmInicial": 1000,
       "kmFinal": 1120,
       "ganhos": { "uber": 220.5, "noventaenove": 80, "indrive": 40 },
-      "combustivel": 70,
+      "combustivel": { "tipo": "gasolina", "valor": 70, "litros": 12 },
       "outrosGastos": 10,
       "observacoes": "Turno manhã",
       "atualizadoEm": "2026-10-14T20:15:00.000Z"
+    }
+  ],
+  "manutencoes": [
+    {
+      "id": "uuid",
+      "data": "2026-10-10",
+      "categoria": "troca_oleo",
+      "descricao": "Troca de óleo 5W-30 sintético",
+      "custo": 180,
+      "kmNaRealizacao": 50000,
+      "atualizadoEm": "2026-10-10T14:00:00.000Z"
     }
   ]
 }

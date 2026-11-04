@@ -27,11 +27,17 @@ import type {
 } from '../types'
 import { validateManutencao, validateRegistro } from '../lib/validation'
 import { buildCombustivelAggregate, getCombustiveisList } from '../lib/fuel'
+import { getLatestRecordStamp } from '../lib/backup'
+import {
+  getLocalModificacaoStamp,
+  setLocalModificacaoStamp,
+} from '../drive/syncStorage'
 
 interface DataContextValue {
   registros: Registro[]
   manutencoes: Manutencao[]
   loading: boolean
+  ultimaModificacao: string
   saveRegistro: (input: RegistroInput, id?: string) => Promise<void>
   removeRegistro: (id: string) => Promise<void>
   importRegistros: (incoming: Registro[], mode: 'merge' | 'replace') => Promise<void>
@@ -47,6 +53,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [registros, setRegistros] = useState<Registro[]>([])
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([])
   const [loading, setLoading] = useState(true)
+  const [ultimaModificacao, setUltimaModificacaoState] = useState<string>(getLocalModificacaoStamp())
 
   const refresh = useCallback(async () => {
     const [rowsRegistros, rowsManutencoes] = await Promise.all([
@@ -55,6 +62,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     ])
     setRegistros(rowsRegistros)
     setManutencoes(rowsManutencoes)
+
+    let currentMod = getLocalModificacaoStamp()
+    if (!currentMod) {
+      const maxStamp = getLatestRecordStamp({
+        registros: rowsRegistros,
+        manutencoes: rowsManutencoes,
+      })
+      if (maxStamp) {
+        setLocalModificacaoStamp(maxStamp)
+        currentMod = maxStamp
+      }
+    }
+    setUltimaModificacaoState(currentMod)
     setLoading(false)
   }, [])
 
@@ -83,6 +103,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         combustiveis = getCombustiveisList(input)
       }
 
+      const now = new Date().toISOString()
       const registro: Registro = {
         id: id ?? crypto.randomUUID(),
         data: input.data,
@@ -93,9 +114,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         combustiveis,
         outrosGastos: input.outrosGastos ?? 0,
         observacoes: input.observacoes ?? '',
-        atualizadoEm: new Date().toISOString(),
+        atualizadoEm: now,
       }
       await upsertRegistro(registro)
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
       await refresh()
     },
     [refresh],
@@ -103,7 +126,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeRegistro = useCallback(
     async (id: string) => {
+      const now = new Date().toISOString()
       await deleteRegistro(id)
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
       await refresh()
     },
     [refresh],
@@ -151,6 +177,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         atualizadoEm: now,
       }
       await upsertManutencao(manutencao)
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
       await refresh()
     },
     [manutencoes, refresh],
@@ -158,7 +186,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const removeManutencao = useCallback(
     async (id: string) => {
+      const now = new Date().toISOString()
       await deleteManutencao(id)
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
       await refresh()
     },
     [refresh],
@@ -181,6 +212,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       registros,
       manutencoes,
       loading,
+      ultimaModificacao,
       saveRegistro,
       removeRegistro,
       importRegistros,
@@ -193,6 +225,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       registros,
       manutencoes,
       loading,
+      ultimaModificacao,
       saveRegistro,
       removeRegistro,
       importRegistros,

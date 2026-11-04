@@ -32,24 +32,47 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+function Spinner({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent ${className}`}
+      role="status"
+      aria-label="Sincronizando"
+    />
+  )
+}
+
+function badgeColor(status: string, message: string | null): string {
+  if (status === 'error') return 'text-rose-600 dark:text-rose-400'
+  if (status === 'syncing' || status === 'connecting') return 'text-blue-600 dark:text-blue-400'
+  if (status === 'ok' && message?.includes('Mesclagem')) return 'text-amber-600 dark:text-amber-400'
+  if (status === 'ok') return 'text-emerald-600 dark:text-emerald-400'
+  return 'text-slate-500'
+}
+
 function DriveBadge() {
-  const { status } = useDrive()
-  const label =
-    status === 'ok'
-      ? 'Drive sincronizado'
-      : status === 'syncing' || status === 'connecting'
-        ? 'Sincronizando Drive…'
+  const { status, message } = useDrive()
+
+  const isBusy = status === 'syncing' || status === 'connecting'
+
+  const label = isBusy
+    ? 'Sincronizando Drive…'
+    : status === 'ok' && message
+      ? message
+      : status === 'ok'
+        ? 'Drive sincronizado'
         : status === 'error'
-          ? 'Drive desconectado'
+          ? message || 'Drive desconectado'
           : status === 'dev'
             ? 'Drive (modo teste)'
             : 'Drive'
+
   return (
     <p
-      className={`text-[11px] ${
-        status === 'error' ? 'text-rose-600' : 'text-slate-500'
-      }`}
+      className={`flex items-center gap-1.5 text-[11px] font-medium leading-tight transition-colors ${badgeColor(status, message)}`}
+      title={message ?? undefined}
     >
+      {isBusy ? <Spinner /> : null}
       {label}
     </p>
   )
@@ -57,6 +80,21 @@ function DriveBadge() {
 
 export function Layout() {
   const { session, logout } = useAuth()
+  const { isInitialSyncing } = useDrive()
+
+  if (isInitialSyncing) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center dark:bg-slate-950">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+        <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
+          Sincronizando com o Google Drive…
+        </h2>
+        <p className="max-w-sm text-xs text-slate-500">
+          Comparando a versão mais recente entre seu aparelho e a nuvem antes de carregar seus dados.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">

@@ -27,6 +27,7 @@ export function ConfigPage() {
   )
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   function exportJson() {
     const json = backupToJson(registros, settings, manutencoes)
@@ -218,12 +219,15 @@ export function ConfigPage() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-semibold">Google Drive (automático)</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Após cada lançamento ou manutenção realizada, o app grava{' '}
-          <strong>MotoristaConta-dados.json</strong> no Drive da sua conta Google. No login, restaura
-          caso o backup do Drive seja mais recente. Também anexa o registro em{' '}
-          <strong>MotoristaConta-acessos.json</strong>.
+          O aplicativo compara a data de modificação entre este aparelho e o Google Drive,
+          garantindo que <strong>sempre a versão mais recente prevaleça</strong>. Se houver
+          alterações simultâneas, uma <strong>mesclagem inteligente</strong> é realizada registro a
+          registro, salvando em ambos os lados.
         </p>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 flex items-center gap-1.5 text-sm text-slate-500">
+          {(status === 'syncing' || status === 'connecting' || isSyncing) ? (
+            <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+          ) : null}
           Status:{' '}
           {status === 'ok'
             ? 'sincronizado'
@@ -239,23 +243,37 @@ export function ConfigPage() {
             : ''}
         </p>
         {driveMessage ? (
-          <p className={`mt-2 text-sm ${status === 'error' ? 'text-rose-600' : 'text-emerald-600'}`}>
+          <p
+            className={`mt-2 text-sm font-medium ${
+              status === 'error'
+                ? 'text-rose-600 dark:text-rose-400'
+                : driveMessage.includes('Mesclagem')
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : 'text-emerald-600 dark:text-emerald-400'
+            }`}
+          >
+            {status === 'error' ? '🔴 ' : driveMessage.includes('Mesclagem') ? '⚠️ ' : '✅ '}
             {driveMessage}
           </p>
         ) : null}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
+            disabled={isSyncing}
             onClick={() => {
-              void syncNow().then(
-                () => setMessage('Backup enviado ao Drive.'),
-                (err: unknown) =>
+              setIsSyncing(true)
+              void syncNow()
+                .catch((err: unknown) =>
                   setError(err instanceof Error ? err.message : 'Falha ao sincronizar.'),
-              )
+                )
+                .finally(() => setIsSyncing(false))
             }}
-            className="h-11 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white"
+            className="flex h-11 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
           >
-            Sincronizar agora
+            {isSyncing ? (
+              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : null}
+            {isSyncing ? 'Sincronizando…' : 'Sincronizar agora'}
           </button>
           <button
             type="button"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, type BackupPayload, type Registro } from '../types'
-import { backupStamp, decideSync } from './conflict'
+import { compararESincronizar } from './conflict'
 
 const registro = (id: string, at: string): Registro => ({
   id,
@@ -14,40 +14,124 @@ const registro = (id: string, at: string): Registro => ({
   atualizadoEm: at,
 })
 
-function payload(rows: Registro[], exportedAt: string): BackupPayload {
+function payload(
+  rows: Registro[],
+  exportedAt: string,
+  manutencoes?: any[],
+): BackupPayload {
   return {
     version: 1,
     app: 'MotoristaConta',
     exportedAt,
     settings: DEFAULT_SETTINGS,
     registros: rows,
-  }
+    manutencoes,
+  } as BackupPayload
 }
 
-describe('decideSync', () => {
-  it('restaura quando o aparelho está vazio e o Drive tem dados', () => {
-    const remote = payload([registro('a', '2026-10-02T00:00:00.000Z')], '2026-10-02T00:00:00.000Z')
-    expect(decideSync(0, '', remote)).toBe('restore')
+describe('compararESincronizar', () => {
+  const now = '2026-10-10T12:00:00.000Z'
+
+  it('dados locais mais recentes → envia ao Drive', () => {
+    const local = payload(
+      [registro('a', '2026-10-09T10:00:00.000Z')],
+      now,
+    )
+    const remote = payload(
+      [registro('a', '2026-10-08T09:00:00.000Z')],
+      '2026-10-08T09:00:00.000Z',
+    )
+    const result = compararESincronizar(local, remote, now)
+    expect(result.action).toBe('local-applied')
+    expect(result.needsRemoteUpload).toBe(true)
+    expect(result.needsLocalUpdate).toBe(false)
+    expect(result.message).toContain('dados locais estão mais atualizados')
   })
 
-  it('mantém local quando o Drive está vazio', () => {
-    expect(decideSync(2, '2026-10-02T00:00:00.000Z', null)).toBe('keep-local')
+  it('dados do Drive mais recentes → baixar e aplicar', () => {
+    const local = payload(
+      [registro('a', '2026-10-07T08:00:00.000Z')],
+      '2026-10-07T08:00:00.000Z',
+    )
+    const remote = payload(
+      [registro('a', '2026-10-09T10:00:00.000Z')],
+      now,
+    )
+    const result = compararESincronizar(local, remote, now)
+    expect(result.action).toBe('remote-applied')
+    expect(result.needsLocalUpdate).toBe(true)
+    expect(result.needsRemoteUpload).toBe(false)
+    expect(result.message).toContain('versão mais recente do Google Drive')
   })
 
-  it('restaura se o Drive for mais recente', () => {
-    const remote = payload([registro('a', '2026-10-03T00:00:00.000Z')], '2026-10-01T00:00:00.000Z')
-    expect(decideSync(1, '2026-10-02T00:00:00.000Z', remote)).toBe('restore')
+  it('alterações nos dois lados → mesclagem por registro', () => {
+    const local = payload(
+      [registro('a', '2026-10-09T10:00:00.000Z')],
+      now,
+    )
+    const remote = payload(
+      [registro('b', '2026-10-09T11:00:00.000Z')],
+      now,
+    )
+    const result = compararESincronizar(local, remote, now)
+    expect(result.action).toBe('merged')
+    expect(result.needsLocalUpdate).toBe(true)
+    expect(result.needsRemoteUpload).toBe(true)
+    expect(result.message).toContain('Mesclagem realizada')
+    const ids = result.mergedRegistros.map((r) => r.id)
+    expect(ids).toEqual(expect.arrayContaining(['a', 'b']))
   })
 
-  it('envia o local se ele for mais novo ou igual', () => {
-    const remote = payload([registro('a', '2026-10-01T00:00:00.000Z')], '2026-10-01T00:00:00.000Z')
-    expect(decideSync(1, '2026-10-02T00:00:00.000Z', remote)).toBe('keep-local')
+  it('sem diferença → sem ação', () => {
+    const p = payload(
+      [registro('a', '2026-10-09T10:00:00.000Z')],
+      now,
+    )
+    const result = compararESincronizar(p, p, now)
+    expect(result.action).toBe('up-to-date')
+    expect(result.needsLocalUpdate).toBe(false)
+    expect(result.needsRemoteUpload).toBe(false)
+    expect(result.message).toContain('já está atualizado')
   })
-})
 
-describe('backupStamp', () => {
-  it('usa o maior entre exportedAt e atualizadoEm', () => {
-    const remote = payload([registro('a', '2026-10-09T00:00:00.000Z')], '2026-10-01T00:00:00.000Z')
-    expect(backupStamp(remote)).toBe('2026-10-09T00:00:00.000Z')
+  it('ambos vazios → noop', () => {
+    const empty = payload([], now)
+    const result = compararESincronizar(empty, empty, now)
+    expect(result.action).toBe('noop')
+  })
+
+  it('local vazio + remoto com dados → remote-applied', () => {
+    const local = payload([], now)
+    const remote = payload(
+      [registro('a', '2026-10-09T10:00:00.000Z')],
+      now,
+    )
+    const result = compararESincronizar(local, remote, now)
+    expect(result.action).toBe('remote-applied')
+    expect(result.needsLocalUpdate).toBe(true)
+  })
+
+  it('remoto null → local-applied', () => {
+    const local = payload(
+      [registro('a', '2026-10-09T10:00:00.000Z')],
+      now,
+    )
+    const result = compararESincronizar(local, null, now)
+    expect(result.action).toBe('local-applied')
+    expect(result.needsRemoteUpload).toBe(true)
+  })
+
+  it('registro duplicado usa atualizadoEm mais recente', () => {
+    const local = payload(
+      [registro('x', '2026-10-08T00:00:00.000Z')],
+      now,
+    )
+    const remote = payload(
+      [registro('x', '2026-10-09T12:00:00.000Z')],
+      now,
+    )
+    const result = compararESincronizar(local, remote, now)
+    expect(result.mergedRegistros).toHaveLength(1)
+    expect(result.mergedRegistros[0].atualizadoEm).toBe('2026-10-09T12:00:00.000Z')
   })
 })
