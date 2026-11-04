@@ -3,8 +3,13 @@ import { useAuth } from '../auth/AuthContext'
 import { useData } from '../data/DataContext'
 import { useDrive } from '../drive/DriveContext'
 import { useTheme } from '../theme/ThemeContext'
-import { applyImport, backupToJson, parseBackupJson } from '../lib/backup'
-import { downloadJsonBackup, downloadTextFile, registrosToCsv } from '../lib/csv'
+import {
+  applyImport,
+  applyImportManutencoes,
+  backupToJson,
+  parseBackupJson,
+} from '../lib/backup'
+import { downloadJsonBackup, downloadTextFile, fullBackupToCsv } from '../lib/csv'
 import { todayISO } from '../lib/format'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import type { ImportMode } from '../lib/backup'
@@ -13,7 +18,7 @@ import type { ThemePreference } from '../types'
 export function ConfigPage() {
   const { session, logout } = useAuth()
   const { settings, setTheme, updateSettings } = useTheme()
-  const { registros, importRegistros } = useData()
+  const { registros, manutencoes, importRegistros, importManutencoes } = useData()
   const { status, message: driveMessage, lastSyncAt, syncNow, reconnect } = useDrive()
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMode, setImportMode] = useState<ImportMode | null>(null)
@@ -24,14 +29,14 @@ export function ConfigPage() {
   const [error, setError] = useState<string | null>(null)
 
   function exportJson() {
-    const json = backupToJson(registros, settings)
+    const json = backupToJson(registros, settings, manutencoes)
     downloadJsonBackup(`motoristaconta-${todayISO()}.json`, json)
   }
 
   function exportCsv() {
     downloadTextFile(
       `motoristaconta-${todayISO()}.csv`,
-      registrosToCsv(registros),
+      fullBackupToCsv(registros, manutencoes),
       'text/csv;charset=utf-8',
     )
   }
@@ -52,11 +57,14 @@ export function ConfigPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <header>
         <h1 className="text-2xl font-bold">Configurações</h1>
-        <p className="text-sm text-slate-500">Preferências locais, backup e conta.</p>
+        <p className="text-sm text-slate-500">
+          Preferências locais, metas, alertas de manutenção e backup em nuvem.
+        </p>
       </header>
 
+      {/* Metas financeiras */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <h2 className="font-semibold">Metas</h2>
+        <h2 className="font-semibold">Metas Financeiras</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="text-sm">
             Meta R$/km
@@ -83,11 +91,53 @@ export function ConfigPage() {
           </label>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          Padrão de reserva: 15% dos ganhos. A dica do dashboard compara esse valor acumulado com o
-          lucro líquido do período.
+          Padrão de reserva: 15% dos ganhos brutos. A dica do dashboard compara esse valor acumulado
+          com o lucro líquido do período.
         </p>
       </section>
 
+      {/* Alertas de Manutenção */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="font-semibold">Alertas de Manutenção Preventiva</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Configure com quanta antecedência o aplicativo deve avisar sobre manutenções próximas de
+          vencer.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">
+            Antecedência por dias
+            <input
+              type="number"
+              min={1}
+              max={180}
+              step={1}
+              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-950"
+              value={settings.alertaManutencaoDias}
+              onChange={(e) =>
+                updateSettings({ alertaManutencaoDias: Math.max(1, Number(e.target.value)) })
+              }
+            />
+            <span className="text-[11px] text-slate-400">Padrão: 30 dias de antecedência</span>
+          </label>
+
+          <label className="text-sm">
+            Antecedência por quilometragem (KM)
+            <input
+              type="number"
+              min={50}
+              step={50}
+              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-950"
+              value={settings.alertaManutencaoKm}
+              onChange={(e) =>
+                updateSettings({ alertaManutencaoKm: Math.max(50, Number(e.target.value)) })
+              }
+            />
+            <span className="text-[11px] text-slate-400">Padrão: 500 km de antecedência</span>
+          </label>
+        </div>
+      </section>
+
+      {/* Aparência */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-semibold">Aparência</h2>
         <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Tema">
@@ -119,8 +169,13 @@ export function ConfigPage() {
         </div>
       </section>
 
+      {/* Backup e exportação */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-semibold">Backup e exportação</h2>
+        <p className="mt-1 text-xs text-slate-500">
+          Os arquivos exportados contêm todos os lançamentos diários, histórico de manutenções e
+          configurações.
+        </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
@@ -159,12 +214,14 @@ export function ConfigPage() {
         {error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}
       </section>
 
+      {/* Google Drive */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-semibold">Google Drive (automático)</h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Após cada lançamento, o app grava <strong>MotoristaConta-dados.json</strong> no Drive da
-          conta logada. No login, restaura se o arquivo do Drive for mais recente. Também anexa um
-          registro em <strong>MotoristaConta-acessos.json</strong>.
+          Após cada lançamento ou manutenção realizada, o app grava{' '}
+          <strong>MotoristaConta-dados.json</strong> no Drive da sua conta Google. No login, restaura
+          caso o backup do Drive seja mais recente. Também anexa o registro em{' '}
+          <strong>MotoristaConta-acessos.json</strong>.
         </p>
         <p className="mt-2 text-sm text-slate-500">
           Status:{' '}
@@ -218,6 +275,7 @@ export function ConfigPage() {
         </p>
       </section>
 
+      {/* Conta */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-semibold">Conta</h2>
         <dl className="mt-3 space-y-1 text-sm">
@@ -264,36 +322,56 @@ export function ConfigPage() {
         }}
         onConfirm={async () => {
           if (!pendingPayload || !importMode) return
-          const next = applyImport(registros, pendingPayload.registros, importMode)
-          await importRegistros(next, 'replace')
+          const nextRegistros = applyImport(registros, pendingPayload.registros, importMode)
+          await importRegistros(nextRegistros, 'replace')
+
+          if (pendingPayload.manutencoes) {
+            const nextManutencoes = applyImportManutencoes(
+              manutencoes,
+              pendingPayload.manutencoes,
+              importMode,
+            )
+            await importManutencoes(nextManutencoes, 'replace')
+          }
+
           if (pendingPayload.settings) {
             updateSettings(pendingPayload.settings)
           }
+
           setMessage(
             importMode === 'replace'
               ? 'Dados substituídos pelo arquivo importado.'
-              : 'Dados mesclados. Registros mais recentes (atualizadoEm) prevalecem.',
+              : 'Dados mesclados com sucesso. Registros mais recentes prevalecem.',
           )
           setImportMode(null)
           setPendingPayload(null)
         }}
       >
         <p>
-          Encontramos {pendingPayload?.registros.length ?? 0} registros no arquivo. Escolha mesclar
-          (mantém os seus e atualiza IDs coincidentes se o arquivo for mais novo) ou substituir
-          (apaga os lançamentos atuais).
+          Encontramos {pendingPayload?.registros.length ?? 0} lançamento(s) e{' '}
+          {pendingPayload?.manutencoes?.length ?? 0} registro(s) de manutenção no arquivo. Escolha
+          mesclar (mantém os seus e atualiza registros coincidentes se o arquivo for mais novo) ou
+          substituir (apaga os dados atuais).
         </p>
         <div className="mt-3 flex gap-2">
           <button
             type="button"
-            className={`rounded-lg px-3 py-1 text-sm ${importMode === 'merge' ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}
+            className={`rounded-lg px-3 py-1 text-sm ${
+              importMode === 'merge'
+                ? 'bg-emerald-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800'
+            }`}
             onClick={() => setImportMode('merge')}
           >
             Mesclar
           </button>
           <button
             type="button"
-            className={`rounded-lg px-3 py-1 text-sm ${importMode === 'replace' ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-slate-800'}`}
+            className={`rounded-lg px-3 py-1 text-sm ${
+              importMode === 'replace'
+                ? 'bg-rose-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-800'
+            }`}
             onClick={() => setImportMode('replace')}
           >
             Substituir

@@ -1,4 +1,4 @@
-import type { PlatformFilter, Registro } from '../types'
+import type { Manutencao, PlatformFilter, Registro } from '../types'
 import { deriveRegistro } from './calculations'
 import { formatDateISO } from './format'
 import { getCombustiveisList, getCombustivelLitros, getCombustivelValor } from './fuel'
@@ -71,6 +71,57 @@ export function registrosToCsv(
         .join(';'),
     )
   }
+  return lines.join('\n')
+}
+
+export function manutencoesToCsv(manutencoes: Manutencao[]): string {
+  const header = [
+    'id',
+    'data',
+    'categoria',
+    'descricao',
+    'valor',
+    'kmRealizacao',
+    'proximaData',
+    'proximaKm',
+    'oficina',
+    'observacoes',
+    'status',
+  ]
+  const lines = [header.join(';')]
+  for (const m of manutencoes) {
+    lines.push(
+      [
+        m.id,
+        formatDateISO(m.data),
+        m.categoria,
+        m.descricao,
+        m.valor,
+        m.kmRealizacao,
+        m.proximaData ? formatDateISO(m.proximaData) : '',
+        m.proximaKm ?? '',
+        m.oficina ?? '',
+        m.observacoes ?? '',
+        m.status,
+      ]
+        .map(escapeCsv)
+        .join(';'),
+    )
+  }
+  return lines.join('\n')
+}
+
+export function fullBackupToCsv(
+  registros: Registro[],
+  manutencoes: Manutencao[] = [],
+  filter: PlatformFilter = 'todas',
+): string {
+  const lines: string[] = []
+  lines.push('# === LANÇAMENTOS DIÁRIOS ===')
+  lines.push(registrosToCsv(registros, filter))
+  lines.push('')
+  lines.push('# === MANUTENÇÕES VEICULARES ===')
+  lines.push(manutencoesToCsv(manutencoes))
   return lines.join('\n')
 }
 

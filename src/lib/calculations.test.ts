@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { Registro } from '../types'
+import { DEFAULT_SETTINGS, type Manutencao, type Registro } from '../types'
 import { aggregateRegistros, deriveRegistro, trendDelta } from './calculations'
 import { calculateCombustivelMetrics } from './fuel'
-import { validateRegistro } from './validation'
+import { evaluateManutencaoAlerta } from './maintenance'
+import { validateManutencao, validateRegistro } from './validation'
 
 function sample(partial: Partial<Registro> = {}): Registro {
   return {
@@ -179,12 +180,111 @@ describe('cálculo de métricas de combustível', () => {
     expect(metrics.porTipo.gasolina.valor).toBe(100)
     expect(metrics.porTipo.gasolina.litros).toBe(20)
     expect(metrics.porTipo.gasolina.precoMedio).toBe(5)
-    expect(metrics.porTipo.gasolina.kmPorLitro).toBe(5)
+    expect(metrics.porTipo.gasolina.kmPorLitro).toBe(5) // 100 km / 20 L
 
     expect(metrics.porTipo.etanol.valor).toBe(70)
     expect(metrics.porTipo.etanol.litros).toBe(20)
     expect(metrics.porTipo.etanol.precoMedio).toBe(3.5)
     expect(metrics.porTipo.etanol.kmPorLitro).toBe(5)
+  })
+})
+
+describe('validação de manutenção', () => {
+  it('exige pelo menos próxima data ou próximo km', () => {
+    const errors = validateManutencao({
+      data: '2026-10-14',
+      categoria: 'Troca de óleo',
+      descricao: 'Troca de óleo e filtro',
+      valor: 200,
+      kmRealizacao: 50000,
+      status: 'concluido',
+    })
+    expect(errors.some((e) => e.includes('Informe a data ou o KM'))).toBe(true)
+  })
+
+  it('rejeita próximo KM menor ou igual ao de realização', () => {
+    const errors = validateManutencao({
+      data: '2026-10-14',
+      categoria: 'Troca de óleo',
+      descricao: 'Troca de óleo e filtro',
+      valor: 200,
+      kmRealizacao: 50000,
+      proximaKm: 49000,
+      status: 'concluido',
+    })
+    expect(errors.some((e) => e.includes('maior que o KM de realização'))).toBe(true)
+  })
+
+  it('aceita manutenção válida com próxima data ou próximo KM', () => {
+    expect(
+      validateManutencao({
+        data: '2026-10-14',
+        categoria: 'Freios',
+        descricao: 'Pastilhas dianteiras trocadas',
+        valor: 350,
+        kmRealizacao: 50000,
+        proximaKm: 70000,
+        status: 'concluido',
+      }),
+    ).toEqual([])
+  })
+})
+
+describe('alertas inteligentes de manutenção', () => {
+  const baseManutencao: Manutencao = {
+    id: 'm1',
+    data: '2026-10-01',
+    categoria: 'Troca de óleo',
+    descricao: 'Óleo 5W30',
+    valor: 200,
+    kmRealizacao: 50000,
+    proximaData: '2026-11-20',
+    proximaKm: 60000,
+    status: 'concluido',
+    criadoEm: '2026-10-01',
+    atualizadoEm: '2026-10-01',
+  }
+
+  it('alerta 🟢 Ok quando distante do limite por data e km', () => {
+    const hoje = '2026-10-14'
+    const kmAtual = 55000 // Faltam 5000 km e 37 dias
+    const alerta = evaluateManutencaoAlerta(baseManutencao, kmAtual, DEFAULT_SETTINGS, hoje)
+    expect(alerta.status).toBe('ok')
+  })
+
+  it('alerta 🟡 Próximo quando faltam menos de 500 km ou menos de 30 dias', () => {
+    const hoje = '2026-11-01' // faltam 19 dias (<= 30 dias)
+    const kmAtual = 55000
+    const alertaData = evaluateManutencaoAlerta(baseManutencao, kmAtual, DEFAULT_SETTINGS, hoje)
+    expect(alertaData.status).toBe('proximo')
+
+    const alertaKm = evaluateManutencaoAlerta(
+      baseManutencao,
+      59600, // faltam 400 km (<= 500 km)
+      DEFAULT_SETTINGS,
+      '2026-10-14',
+    )
+    expect(alertaKm.status).toBe('proximo')
+  })
+
+  it('alerta 🔴 Atrasado quando passou da data ou ultrapassou o KM', () => {
+    // Passou da data
+    const alertaData = evaluateManutencaoAlerta(
+      baseManutencao,
+      55000,
+      DEFAULT_SETTINGS,
+      '2026-11-25',
+    )
+    expect(alertaData.status).toBe('atrasado')
+
+    // Ultrapassou o KM
+    const alertaKm = evaluateManutencaoAlerta(
+      baseManutencao,
+      60100,
+      DEFAULT_SETTINGS,
+      '2026-10-14',
+    )
+    expect(alertaKm.status).toBe('atrasado')
   })
 })
 

@@ -9,6 +9,7 @@ import { ConfigPage } from './pages/ConfigPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LancamentosPage } from './pages/LancamentosPage'
 import { LoginPage } from './pages/LoginPage'
+import { ManutencaoPage } from './pages/ManutencaoPage'
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
             >
               <Route path="/lancamentos" element={<LancamentosPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/manutencao" element={<ManutencaoPage />} />
               <Route path="/configuracoes" element={<ConfigPage />} />
             </Route>
             <Route path="/" element={<Navigate to="/lancamentos" replace />} />

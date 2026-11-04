@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import type { PeriodPreset, PlatformFilter, Registro } from '../types'
+import type { Manutencao, PeriodPreset, PlatformFilter, Registro } from '../types'
 import { COMBUSTIVEL_COLORS, COMBUSTIVEL_LABEL, PLATFORM_LABEL } from '../types'
 import { aggregateRegistros } from '../lib/calculations'
 import { formatBRL } from '../lib/format'
@@ -138,6 +138,7 @@ interface CombustivelChartsProps {
 }
 
 export function CombustivelCharts({ registros, grouping }: CombustivelChartsProps) {
+  // Totais por tipo de combustível para gráfico de rosca
   const totals = { etanol: 0, gasolina: 0, diesel: 0, nao_informado: 0 }
   for (const reg of registros) {
     const list = getCombustiveisList(reg)
@@ -166,6 +167,7 @@ export function CombustivelCharts({ registros, grouping }: CombustivelChartsProp
       : []),
   ].filter((d) => d.value > 0)
 
+  // Gráfico empilhado ao longo do tempo
   const grouped = groupRegistros(registros, grouping === 'custom' ? 'diario' : grouping)
   const stackedSeries = [...grouped.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -256,6 +258,61 @@ export function CombustivelCharts({ registros, grouping }: CombustivelChartsProp
                 fill={COMBUSTIVEL_COLORS.nao_informado}
               />
             ) : null}
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    </div>
+  )
+}
+
+interface ManutencaoChartsProps {
+  manutencoes: Manutencao[]
+}
+
+export function ManutencaoCharts({ manutencoes }: ManutencaoChartsProps) {
+  if (manutencoes.length === 0) return null
+
+  const categoryMap: Record<string, number> = {}
+  for (const m of manutencoes) {
+    categoryMap[m.categoria] = (categoryMap[m.categoria] ?? 0) + m.valor
+  }
+
+  const categoryData = Object.entries(categoryMap)
+    .map(([categoria, valor]) => ({ categoria, valor }))
+    .sort((a, b) => b.valor - a.valor)
+
+  // Gastos ao longo do tempo ordenados
+  const dateMap: Record<string, number> = {}
+  for (const m of manutencoes) {
+    const key = m.data.slice(0, 7) // YYYY-MM
+    dateMap[key] = (dateMap[key] ?? 0) + m.valor
+  }
+  const timeData = Object.entries(dateMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([mes, valor]) => ({ mes, valor }))
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <ChartCard title="Gastos com manutenção por categoria">
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={categoryData} layout="vertical" margin={{ left: 20 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+            <XAxis type="number" tickFormatter={(v) => `R$ ${v}`} />
+            <YAxis dataKey="categoria" type="category" width={110} tick={{ fontSize: 11 }} />
+            <Tooltip formatter={(v) => formatBRL(Number(v))} />
+            <Bar dataKey="valor" name="Valor total" fill="#0d9488" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </ChartCard>
+
+      <ChartCard title="Gastos com manutenção ao longo do tempo (Mês)">
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={timeData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+            <XAxis dataKey="mes" />
+            <YAxis />
+            <Tooltip formatter={(v) => formatBRL(Number(v))} />
+            <Bar dataKey="valor" name="Manutenção" fill="#0284c7" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>

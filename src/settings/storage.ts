@@ -11,6 +11,12 @@ export function loadSettings(): AppSettings {
       metaRsPorKm: Number(parsed.metaRsPorKm ?? DEFAULT_SETTINGS.metaRsPorKm),
       reservaPercent: Number(parsed.reservaPercent ?? DEFAULT_SETTINGS.reservaPercent),
       theme: parsed.theme ?? DEFAULT_SETTINGS.theme,
+      alertaManutencaoDias: Number(
+        parsed.alertaManutencaoDias ?? DEFAULT_SETTINGS.alertaManutencaoDias,
+      ),
+      alertaManutencaoKm: Number(
+        parsed.alertaManutencaoKm ?? DEFAULT_SETTINGS.alertaManutencaoKm,
+      ),
     }
   } catch {
     return { ...DEFAULT_SETTINGS }

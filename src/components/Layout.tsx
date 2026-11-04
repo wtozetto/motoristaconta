@@ -5,6 +5,7 @@ import { useDrive } from '../drive/DriveContext'
 const LINKS = [
   { to: '/lancamentos', label: 'Lançamentos' },
   { to: '/dashboard', label: 'Dashboard' },
+  { to: '/manutencao', label: 'Manutenção' },
   { to: '/configuracoes', label: 'Configurações' },
 ]
 

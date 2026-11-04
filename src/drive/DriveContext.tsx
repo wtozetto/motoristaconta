@@ -10,7 +10,12 @@ import {
 } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { useData } from '../data/DataContext'
-import { applyImport, parseBackupJson, serializeBackup } from '../lib/backup'
+import {
+  applyImport,
+  applyImportManutencoes,
+  parseBackupJson,
+  serializeBackup,
+} from '../lib/backup'
 import { useTheme } from '../theme/ThemeContext'
 import {
   ACESSOS_FILE_NAME,
@@ -39,7 +44,7 @@ const DEBOUNCE_MS = 2000
 
 export function DriveProvider({ children }: { children: ReactNode }) {
   const { session, ensureDriveToken } = useAuth()
-  const { registros, loading, importRegistros } = useData()
+  const { registros, manutencoes, loading, importRegistros, importManutencoes } = useData()
   const { settings, updateSettings } = useTheme()
   const [status, setStatus] = useState<DriveStatus>('idle')
   const [message, setMessage] = useState<string | null>(null)
@@ -64,10 +69,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     async (
       accessToken: string,
       nextRegistros = registros,
+      nextManutencoes = manutencoes,
       nextSettings = settings,
     ) => {
       if (!session) return
-      const payload = serializeBackup(nextRegistros, nextSettings)
+      const payload = serializeBackup(nextRegistros, nextSettings, nextManutencoes)
       const ids = loadDriveFileIds(session.googleId)
       const file = await upsertJsonFile(
         accessToken,
@@ -80,7 +86,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       setStatus('ok')
       setMessage('Backup no Google Drive atualizado.')
     },
-    [persistIds, registros, session, settings],
+    [manutencoes, persistIds, registros, session, settings],
   )
 
   const writeAccessLog = useCallback(
@@ -145,22 +151,26 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         }
       }
       const remote = remoteRaw ? parseBackupJson(remoteRaw) : null
-      const localStamp = backupStamp(serializeBackup(registros, settings))
-      const decision = decideSync(registros.length, localStamp, remote)
+      const localStamp = backupStamp(serializeBackup(registros, settings, manutencoes))
+      const totalLocalCount = registros.length + manutencoes.length
+      const decision = decideSync(totalLocalCount, localStamp, remote)
 
       let nextRegistros = registros
+      let nextManutencoes = manutencoes
       let nextSettings = settings
       if (decision === 'restore' && remote) {
         skipNextRef.current = true
         nextRegistros = applyImport(registros, remote.registros, 'merge')
+        nextManutencoes = applyImportManutencoes(manutencoes, remote.manutencoes ?? [], 'merge')
         nextSettings = { ...settings, ...remote.settings }
         await importRegistros(nextRegistros, 'replace')
+        await importManutencoes(nextManutencoes, 'replace')
         if (remote.settings) updateSettings(remote.settings)
         setMessage('Dados restaurados do Google Drive (registros mais recentes prevalecem).')
       }
 
       setStatus('syncing')
-      await uploadPayload(accessToken, nextRegistros, nextSettings)
+      await uploadPayload(accessToken, nextRegistros, nextManutencoes, nextSettings)
       await writeAccessLog(accessToken)
       readyRef.current = true
     } catch (err) {
@@ -174,8 +184,10 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     }
   }, [
     ensureDriveToken,
+    importManutencoes,
     importRegistros,
     isDevBypass,
+    manutencoes,
     persistIds,
     registros,
     session,
@@ -217,7 +229,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current)
     }
-  }, [ensureDriveToken, isDevBypass, loading, registros, settings, uploadPayload])
+  }, [ensureDriveToken, isDevBypass, loading, manutencoes, registros, settings, uploadPayload])
 
   const syncNow = useCallback(async () => {
     if (isDevBypass) return

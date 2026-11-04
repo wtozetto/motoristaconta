@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, type Registro } from '../types'
-import { applyImport, backupToJson, parseBackupJson } from './backup'
+import { DEFAULT_SETTINGS, type Manutencao, type Registro } from '../types'
+import {
+  applyImport,
+  applyImportManutencoes,
+  backupToJson,
+  parseBackupJson,
+} from './backup'
 
 const older: Registro = {
   id: 'same',
@@ -21,11 +26,33 @@ const newer: Registro = {
   atualizadoEm: '2026-10-02T10:00:00.000Z',
 }
 
+const manutencaoExemplo: Manutencao = {
+  id: 'm1',
+  data: '2026-10-01',
+  categoria: 'Troca de óleo',
+  descricao: 'Óleo 5W30 + Filtro',
+  valor: 250,
+  kmRealizacao: 50000,
+  proximaData: '2027-04-01',
+  proximaKm: 60000,
+  oficina: 'Oficina Central',
+  observacoes: 'Garantia',
+  status: 'concluido',
+  criadoEm: '2026-10-01T10:00:00.000Z',
+  atualizadoEm: '2026-10-01T10:00:00.000Z',
+}
+
 describe('JSON import/export', () => {
-  it('preserva integridade no roundtrip com schema v2 e tipo de combustível', () => {
-    const json = backupToJson([older], DEFAULT_SETTINGS, '2026-10-14T00:00:00.000Z')
+  it('preserva integridade no roundtrip com schema v2 e manutenções', () => {
+    const json = backupToJson(
+      [older],
+      DEFAULT_SETTINGS,
+      [manutencaoExemplo],
+      '2026-10-14T00:00:00.000Z',
+    )
     const parsed = parseBackupJson(json)
     expect(parsed.registros).toEqual([older])
+    expect(parsed.manutencoes).toEqual([manutencaoExemplo])
     expect(parsed.settings.reservaPercent).toBe(15)
     expect(parsed.app).toBe('MotoristaConta')
     expect(JSON.parse(json).version).toBe(2)
@@ -66,6 +93,7 @@ describe('JSON import/export', () => {
         valor: 80,
       },
     ])
+    expect(parsed.manutencoes).toEqual([])
   })
 
   it('no merge, atualizadoEm mais recente vence', () => {
@@ -89,5 +117,19 @@ describe('JSON import/export', () => {
     const extra: Registro = { ...older, id: 'incoming-only' }
     const replaced = applyImport([older, newer], [extra], 'replace')
     expect(replaced).toEqual([extra])
+  })
+
+  it('merge e replace de manutenções', () => {
+    const mNewer: Manutencao = {
+      ...manutencaoExemplo,
+      descricao: 'Descrição atualizada',
+      atualizadoEm: '2026-10-05T10:00:00.000Z',
+    }
+    const merged = applyImportManutencoes([manutencaoExemplo], [mNewer], 'merge')
+    expect(merged[0].descricao).toBe('Descrição atualizada')
+
+    const mExtra: Manutencao = { ...manutencaoExemplo, id: 'm2' }
+    const replaced = applyImportManutencoes([manutencaoExemplo], [mExtra], 'replace')
+    expect(replaced).toEqual([mExtra])
   })
 })

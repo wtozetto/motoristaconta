@@ -1,4 +1,4 @@
-import type { RegistroInput } from '../types'
+import type { ManutencaoInput, RegistroInput } from '../types'
 import { getCombustivelValor } from './fuel'
 
 export function validateRegistro(input: RegistroInput): string[] {
@@ -56,3 +56,43 @@ export function validateRegistro(input: RegistroInput): string[] {
   }
   return errors
 }
+
+export function validateManutencao(input: ManutencaoInput): string[] {
+  const errors: string[] = []
+  if (!input.data || !/^\d{4}-\d{2}-\d{2}$/.test(input.data)) {
+    errors.push('Informe uma data válida de realização.')
+  }
+  if (!input.categoria || !input.categoria.trim()) {
+    errors.push('Selecione uma categoria para o serviço.')
+  }
+  if (!input.descricao || !input.descricao.trim()) {
+    errors.push('Informe a descrição do serviço realizado.')
+  }
+  if (!Number.isFinite(input.valor) || input.valor < 0) {
+    errors.push('Valor total da manutenção não pode ser negativo.')
+  }
+  if (!Number.isFinite(input.kmRealizacao) || input.kmRealizacao < 0) {
+    errors.push('KM de realização não pode ser negativo.')
+  }
+
+  const hasData = Boolean(input.proximaData && input.proximaData.trim())
+  const hasKm =
+    input.proximaKm !== undefined &&
+    input.proximaKm !== null &&
+    Number.isFinite(input.proximaKm)
+
+  if (!hasData && !hasKm) {
+    errors.push('Informe a data ou o KM da próxima manutenção (pelo menos um para gerar alertas).')
+  }
+
+  if (hasData && !/^\d{4}-\d{2}-\d{2}$/.test(input.proximaData!)) {
+    errors.push('Informe uma data válida para a próxima manutenção.')
+  }
+
+  if (hasKm && input.proximaKm! <= input.kmRealizacao) {
+    errors.push('O KM da próxima manutenção deve ser maior que o KM de realização.')
+  }
+
+  return errors
+}
+

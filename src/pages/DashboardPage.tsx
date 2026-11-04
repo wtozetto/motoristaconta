@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useData } from '../data/DataContext'
 import { useTheme } from '../theme/ThemeContext'
-import { CombustivelCharts, DashboardCharts } from '../components/DashboardCharts'
+import {
+  CombustivelCharts,
+  DashboardCharts,
+  ManutencaoCharts,
+} from '../components/DashboardCharts'
 import { MetricCard } from '../components/MetricCard'
 import { PlatformFilterBar } from '../components/PlatformFilter'
 import { RegistroTable } from '../components/RegistroTable'
@@ -16,8 +21,9 @@ import {
   type DateRange,
 } from '../lib/periods'
 import { buildTips } from '../lib/tips'
-import { formatBRL, todayISO } from '../lib/format'
+import { formatBRL, formatKm, todayISO } from '../lib/format'
 import { calculateCombustivelMetrics, getCombustiveisList } from '../lib/fuel'
+import { getAllManutencaoAlertas, getKmAtual } from '../lib/maintenance'
 import type {
   CombustivelTipo,
   PeriodPreset,
@@ -38,13 +44,14 @@ const PRESETS: PeriodPreset[] = [
 ]
 
 export function DashboardPage() {
-  const { registros, saveRegistro, removeRegistro } = useData()
+  const { registros, manutencoes, saveRegistro, removeRegistro } = useData()
   const { settings } = useTheme()
   const [preset, setPreset] = useState<PeriodPreset>('mensal')
   const [custom, setCustom] = useState<DateRange>({ start: todayISO(), end: todayISO() })
   const [filter, setFilter] = useState<PlatformFilter>('todas')
   const [editing, setEditing] = useState<Registro | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Registro | null>(null)
+  const [includeMaintenance, setIncludeMaintenance] = useState(false)
 
   const range = useMemo(
     () => getPeriodRange(preset, new Date(), custom),
@@ -60,11 +67,58 @@ export function DashboardPage() {
   const previous = aggregateRegistros(previousRows, filter)
   const tips = buildTips(currentRows, settings, filter)
 
+  // Manutenção no período filtrado
+  const currentManutencoes = useMemo(
+    () => manutencoes.filter((m) => m.data >= range.start && m.data <= range.end),
+    [manutencoes, range],
+  )
+  const previousManutencoes = useMemo(
+    () => manutencoes.filter((m) => m.data >= prevRange.start && m.data <= prevRange.end),
+    [manutencoes, prevRange],
+  )
+  const totalManutencao = useMemo(
+    () => currentManutencoes.reduce((acc, m) => acc + m.valor, 0),
+    [currentManutencoes],
+  )
+  const prevTotalManutencao = useMemo(
+    () => previousManutencoes.reduce((acc, m) => acc + m.valor, 0),
+    [previousManutencoes],
+  )
+
+  // Alertas de manutenção inteligente
+  const kmAtual = useMemo(
+    () => getKmAtual(registros, manutencoes),
+    [registros, manutencoes],
+  )
+  const alertas = useMemo(
+    () => getAllManutencaoAlertas(manutencoes, kmAtual, settings),
+    [manutencoes, kmAtual, settings],
+  )
+  const urgentAlerts = useMemo(
+    () => alertas.filter((a) => a.status === 'atrasado' || a.status === 'proximo'),
+    [alertas],
+  )
+
   // Combustível no período filtrado
   const fuelMetrics = useMemo(
     () => calculateCombustivelMetrics(currentRows, current.km),
     [currentRows, current.km],
   )
+
+  // Valores considerando ou não a visão de custo real com manutenção
+  const gastosExibidos = includeMaintenance
+    ? current.totalGastos + totalManutencao
+    : current.totalGastos
+  const prevGastosExibidos = includeMaintenance
+    ? previous.totalGastos + prevTotalManutencao
+    : previous.totalGastos
+
+  const lucroExibido = includeMaintenance
+    ? current.totalGanhos - gastosExibidos
+    : current.lucroLiquido
+  const prevLucroExibido = includeMaintenance
+    ? previous.totalGanhos - prevGastosExibidos
+    : previous.lucroLiquido
 
   const outrosGastosTotal = Math.max(0, current.totalGastos - fuelMetrics.totalValor)
 
@@ -77,7 +131,44 @@ export function DashboardPage() {
             Período de {range.start} a {range.end}. Setas comparam com o intervalo anterior.
           </p>
         </div>
+
+        {/* Toggle Custo Total Real */}
+        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold sm:text-sm dark:border-slate-800 dark:bg-slate-900">
+          <input
+            type="checkbox"
+            checked={includeMaintenance}
+            onChange={(e) => setIncludeMaintenance(e.target.checked)}
+            className="h-4 w-4 rounded accent-emerald-600"
+          />
+          <span>Custo total real (inclui manutenção)</span>
+        </label>
       </header>
+
+      {/* Alerta inteligente de manutenção no topo */}
+      {urgentAlerts.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-700/50 dark:bg-amber-950/40">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <p className="font-semibold text-amber-900 dark:text-amber-200">
+                Atenção: {urgentAlerts.length} manutenção(ões) veicular(es) requer(em) atenção!
+              </p>
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                {urgentAlerts[0].manutencao.categoria}: {urgentAlerts[0].detalhe}
+                {urgentAlerts.length > 1
+                  ? ` (e mais ${urgentAlerts.length - 1} item(ns))`
+                  : ''}
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/manutencao"
+            className="self-start whitespace-nowrap rounded-xl bg-amber-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-amber-500 sm:self-auto"
+          >
+            Ver manutenções
+          </Link>
+        </div>
+      ) : null}
 
       {/* Filtros de período */}
       <div className="flex flex-wrap gap-2" role="group" aria-label="Período">
@@ -134,7 +225,7 @@ export function DashboardPage() {
       <PlatformFilterBar value={filter} onChange={setFilter} />
 
       {/* Cards de KPIs Principais */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
         <MetricCard
           label="Ganhos"
           value={current.totalGanhos}
@@ -143,18 +234,18 @@ export function DashboardPage() {
           trend={trendDelta(current.totalGanhos, previous.totalGanhos)}
         />
         <MetricCard
-          label="Gastos"
-          value={current.totalGastos}
+          label={includeMaintenance ? 'Gastos (c/ manut.)' : 'Gastos'}
+          value={gastosExibidos}
           kind="money"
           tone="expense"
-          trend={trendDelta(current.totalGastos, previous.totalGastos)}
+          trend={trendDelta(gastosExibidos, prevGastosExibidos)}
         />
         <MetricCard
-          label="Lucro"
-          value={current.lucroLiquido}
+          label={includeMaintenance ? 'Lucro Real' : 'Lucro'}
+          value={lucroExibido}
           kind="money"
-          tone={current.lucroLiquido >= 0 ? 'profit' : 'expense'}
-          trend={trendDelta(current.lucroLiquido, previous.lucroLiquido)}
+          tone={lucroExibido >= 0 ? 'profit' : 'expense'}
+          trend={trendDelta(lucroExibido, prevLucroExibido)}
         />
         <MetricCard
           label="Km"
@@ -169,6 +260,14 @@ export function DashboardPage() {
           trend={trendDelta(current.mediaGanhoPorKm, previous.mediaGanhoPorKm)}
           hint="Ganhos considerados / km do dia. Com filtro de app, ganhos são só daquele app; km segue o odômetro do dia."
         />
+        <MetricCard
+          label="Manutenção"
+          value={totalManutencao}
+          kind="money"
+          tone="expense"
+          trend={trendDelta(totalManutencao, prevTotalManutencao)}
+          hint="Gastos com serviços e peças de manutenção realizadas no período selecionado."
+        />
       </div>
 
       {/* Composição Detalhada dos Gastos */}
@@ -176,7 +275,7 @@ export function DashboardPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
           Composição detalhada dos gastos no período
         </h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
             <span className="text-xs text-slate-500">Combustível total</span>
             <p className="text-lg font-bold text-rose-600 tabular-nums">
@@ -207,10 +306,25 @@ export function DashboardPage() {
               Pedágios, lavagem, alimentação e despesas diárias
             </p>
           </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-500">Manutenção veicular</span>
+              <Link to="/manutencao" className="text-[11px] font-semibold text-emerald-600 hover:underline">
+                Gerenciar
+              </Link>
+            </div>
+            <p className="text-lg font-bold text-teal-600 tabular-nums">
+              {formatBRL(totalManutencao)}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {currentManutencoes.length} serviço(s) realizado(s) no período
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* SEÇÃO COMBUSTÍVEL */}
+      {/* SEÇÃO 1: COMBUSTÍVEL */}
       <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
           <div>
@@ -263,6 +377,33 @@ export function DashboardPage() {
 
         {/* Gráficos de combustível */}
         <CombustivelCharts registros={currentRows} grouping={preset} />
+      </section>
+
+      {/* SEÇÃO 2: MANUTENÇÃO VEICULAR */}
+      <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-3 dark:border-slate-800">
+          <div>
+            <h2 className="text-lg font-bold">Manutenção veicular no período</h2>
+            <p className="text-xs text-slate-500">
+              Controle preventivo e corretivo. KM atual do veículo:{' '}
+              <strong>{formatKm(kmAtual)}</strong>.
+            </p>
+          </div>
+          <Link
+            to="/manutencao"
+            className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+          >
+            Abrir módulo de manutenção →
+          </Link>
+        </div>
+
+        {currentManutencoes.length > 0 ? (
+          <ManutencaoCharts manutencoes={currentManutencoes} />
+        ) : (
+          <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
+            Nenhuma manutenção registrada no período de {range.start} a {range.end}.
+          </p>
+        )}
       </section>
 
       {/* Dicas inteligentes */}

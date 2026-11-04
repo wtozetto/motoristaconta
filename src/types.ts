@@ -56,6 +56,65 @@ export interface RegistroInput {
   observacoes?: string
 }
 
+export const MANUTENCAO_CATEGORIAS = [
+  'Troca de óleo',
+  'Filtros',
+  'Pneus/rodízio/alinhamento',
+  'Freios',
+  'Suspensão',
+  'Correia dentada',
+  'Embreagem',
+  'Bateria',
+  'Velas/ignição',
+  'Ar-condicionado',
+  'Revisão geral',
+  'Outros',
+] as const
+
+export type ManutencaoCategoria = (typeof MANUTENCAO_CATEGORIAS)[number] | string
+
+export type ManutencaoStatus = 'concluido' | 'programado'
+
+export interface Manutencao {
+  id: string
+  data: string
+  categoria: ManutencaoCategoria
+  descricao: string
+  valor: number
+  kmRealizacao: number
+  proximaData?: string
+  proximaKm?: number
+  oficina?: string
+  observacoes?: string
+  status: ManutencaoStatus
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export interface ManutencaoInput {
+  data: string
+  categoria: ManutencaoCategoria
+  descricao: string
+  valor: number
+  kmRealizacao: number
+  proximaData?: string
+  proximaKm?: number
+  oficina?: string
+  observacoes?: string
+  status: ManutencaoStatus
+}
+
+export type AlertaStatus = 'atrasado' | 'proximo' | 'ok'
+
+export interface ManutencaoAlerta {
+  manutencao: Manutencao
+  status: AlertaStatus
+  mensagem: string
+  detalhe?: string
+  diasRestantes?: number
+  kmRestantes?: number
+}
+
 export interface DerivedMetrics {
   km: number
   totalGanhos: number
@@ -80,6 +139,8 @@ export interface AppSettings {
   metaRsPorKm: number
   reservaPercent: number
   theme: ThemePreference
+  alertaManutencaoDias: number
+  alertaManutencaoKm: number
 }
 
 export const BACKUP_VERSION = 2 as const
@@ -90,6 +151,7 @@ export interface BackupPayload {
   exportedAt: string
   settings: AppSettings
   registros: Registro[]
+  manutencoes?: Manutencao[]
 }
 
 export const PLATFORM_LABEL: Record<PlatformKey, string> = {
@@ -116,4 +178,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   metaRsPorKm: 0,
   reservaPercent: 15,
   theme: 'system',
+  alertaManutencaoDias: 30,
+  alertaManutencaoKm: 500,
 }

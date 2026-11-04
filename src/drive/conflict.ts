@@ -4,7 +4,11 @@ export type SyncDecision = 'restore' | 'keep-local' | 'noop'
 
 export function backupStamp(payload: BackupPayload | null): string {
   if (!payload) return ''
-  const stamps = [payload.exportedAt, ...payload.registros.map((r) => r.atualizadoEm)]
+  const stamps = [
+    payload.exportedAt,
+    ...payload.registros.map((r) => r.atualizadoEm),
+    ...(payload.manutencoes ?? []).map((m) => m.atualizadoEm),
+  ]
   return stamps.reduce((best, item) => (item > best ? item : best), '')
 }
 
@@ -13,7 +17,8 @@ export function decideSync(
   localStamp: string,
   remote: BackupPayload | null,
 ): SyncDecision {
-  const remoteCount = remote?.registros.length ?? 0
+  const remoteCount =
+    (remote?.registros.length ?? 0) + (remote?.manutencoes?.length ?? 0)
   if (remoteCount === 0 && localCount === 0) return 'noop'
   if (remoteCount === 0) return 'keep-local'
   if (localCount === 0) return 'restore'
