@@ -1,4 +1,5 @@
 import type { RegistroInput } from '../types'
+import { getCombustivelValor } from './fuel'
 
 export function validateRegistro(input: RegistroInput): string[] {
   const errors: string[] = []
@@ -18,9 +19,37 @@ export function validateRegistro(input: RegistroInput): string[] {
   if (uber < 0 || noventaenove < 0 || indrive < 0) {
     errors.push('Ganhos não podem ser negativos.')
   }
-  if (!Number.isFinite(input.combustivel) || input.combustivel < 0) {
-    errors.push('Combustível não pode ser negativo.')
+
+  if (input.combustiveis && input.combustiveis.length > 0) {
+    for (const item of input.combustiveis) {
+      if (!Number.isFinite(item.valor) || item.valor < 0) {
+        errors.push('Combustível não pode ser negativo.')
+      }
+      if (item.litros !== undefined && (!Number.isFinite(item.litros) || item.litros < 0)) {
+        errors.push('Litros de combustível não podem ser negativos.')
+      }
+      if (item.valor > 0 && (!item.tipo || item.tipo === 'nao_informado')) {
+        errors.push('Selecione o tipo de combustível (Etanol, Gasolina ou Diesel).')
+      }
+    }
+  } else if (typeof input.combustivel === 'object' && input.combustivel !== null) {
+    const { valor, tipo, litros } = input.combustivel
+    if (!Number.isFinite(valor) || valor < 0) {
+      errors.push('Combustível não pode ser negativo.')
+    }
+    if (litros !== undefined && (!Number.isFinite(litros) || litros < 0)) {
+      errors.push('Litros de combustível não podem ser negativos.')
+    }
+    if (valor > 0 && (!tipo || tipo === 'nao_informado')) {
+      errors.push('Selecione o tipo de combustível (Etanol, Gasolina ou Diesel).')
+    }
+  } else {
+    const valor = getCombustivelValor(input.combustivel)
+    if (!Number.isFinite(valor) || valor < 0) {
+      errors.push('Combustível não pode ser negativo.')
+    }
   }
+
   const outros = input.outrosGastos ?? 0
   if (!Number.isFinite(outros) || outros < 0) {
     errors.push('Outros gastos não podem ser negativos.')

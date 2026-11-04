@@ -5,6 +5,7 @@ import type {
   PlatformKey,
   Registro,
 } from '../types'
+import { getCombustivelValor } from './fuel'
 
 function perKm(value: number, km: number): number {
   if (km === 0) return 0
@@ -28,7 +29,7 @@ export function deriveRegistro(
 ): DerivedMetrics {
   const km = registro.kmFinal - registro.kmInicial
   const totalGanhos = ganhosFiltrados(registro.ganhos, filter)
-  const totalGastos = registro.combustivel + (registro.outrosGastos ?? 0)
+  const totalGastos = getCombustivelValor(registro.combustivel) + (registro.outrosGastos ?? 0)
   const lucroLiquido = totalGanhos - totalGastos
   const fullGanhos = totalGanhosPlataformas(registro.ganhos)
   const shares: Ganhos = {

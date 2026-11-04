@@ -18,13 +18,28 @@ export interface Ganhos {
   indrive: number
 }
 
+export type CombustivelTipo = 'etanol' | 'gasolina' | 'diesel' | 'nao_informado'
+
+export interface CombustivelItem {
+  tipo: CombustivelTipo
+  valor: number
+  litros?: number
+}
+
+export interface CombustivelData {
+  tipo: CombustivelTipo | 'multiplo'
+  valor: number
+  litros?: number
+}
+
 export interface Registro {
   id: string
   data: string
   kmInicial: number
   kmFinal: number
   ganhos: Ganhos
-  combustivel: number
+  combustivel: CombustivelData | number
+  combustiveis?: CombustivelItem[]
   outrosGastos: number
   observacoes: string
   atualizadoEm: string
@@ -35,7 +50,8 @@ export interface RegistroInput {
   kmInicial: number
   kmFinal: number
   ganhos: Ganhos
-  combustivel: number
+  combustivel: CombustivelData | number
+  combustiveis?: CombustivelItem[]
   outrosGastos?: number
   observacoes?: string
 }
@@ -66,10 +82,10 @@ export interface AppSettings {
   theme: ThemePreference
 }
 
-export const BACKUP_VERSION = 1 as const
+export const BACKUP_VERSION = 2 as const
 
 export interface BackupPayload {
-  version: typeof BACKUP_VERSION
+  version: number
   app: 'MotoristaConta'
   exportedAt: string
   settings: AppSettings
@@ -80,6 +96,20 @@ export const PLATFORM_LABEL: Record<PlatformKey, string> = {
   uber: 'Uber',
   noventaenove: '99',
   indrive: 'Indrive',
+}
+
+export const COMBUSTIVEL_LABEL: Record<CombustivelTipo, string> = {
+  etanol: 'Etanol',
+  gasolina: 'Gasolina',
+  diesel: 'Diesel',
+  nao_informado: 'Não informado',
+}
+
+export const COMBUSTIVEL_COLORS: Record<CombustivelTipo, string> = {
+  etanol: '#16a34a',
+  gasolina: '#dc2626',
+  diesel: '#2563eb',
+  nao_informado: '#94a3b8',
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

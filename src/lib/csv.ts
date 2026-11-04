@@ -1,8 +1,10 @@
 import type { PlatformFilter, Registro } from '../types'
 import { deriveRegistro } from './calculations'
 import { formatDateISO } from './format'
+import { getCombustiveisList, getCombustivelLitros, getCombustivelValor } from './fuel'
 
-function escapeCsv(value: string | number): string {
+function escapeCsv(value: string | number | undefined | null): string {
+  if (value === undefined || value === null) return ''
   const text = String(value)
   if (/[",;\n]/.test(text)) {
     return `"${text.replaceAll('"', '""')}"`
@@ -25,6 +27,8 @@ export function registrosToCsv(
     'indrive',
     'ganhosConsiderados',
     'combustivel',
+    'tipoCombustivel',
+    'litrosCombustivel',
     'outrosGastos',
     'totalGastos',
     'lucroLiquido',
@@ -36,6 +40,11 @@ export function registrosToCsv(
   const lines = [header.join(';')]
   for (const r of registros) {
     const d = deriveRegistro(r, filter)
+    const valorCombustivel = getCombustivelValor(r.combustivel)
+    const litrosCombustivel = getCombustivelLitros(r.combustivel) ?? ''
+    const list = getCombustiveisList(r)
+    const tipoCombustivel = list.map((c) => c.tipo).join(', ') || 'nao_informado'
+
     lines.push(
       [
         r.id,
@@ -47,7 +56,9 @@ export function registrosToCsv(
         r.ganhos.noventaenove,
         r.ganhos.indrive,
         d.totalGanhos,
-        r.combustivel,
+        valorCombustivel,
+        tipoCombustivel,
+        litrosCombustivel,
         r.outrosGastos ?? 0,
         d.totalGastos,
         d.lucroLiquido,

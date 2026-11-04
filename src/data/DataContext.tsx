@@ -16,6 +16,7 @@ import {
 } from '../db/database'
 import type { Registro, RegistroInput } from '../types'
 import { validateRegistro } from '../lib/validation'
+import { buildCombustivelAggregate, getCombustiveisList } from '../lib/fuel'
 
 interface DataContextValue {
   registros: Registro[]
@@ -48,13 +49,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (errors.length > 0) {
         throw new Error(errors.join(' '))
       }
+
+      let combustivel = input.combustivel
+      let combustiveis = input.combustiveis
+
+      if (combustiveis && combustiveis.length > 0) {
+        const agg = buildCombustivelAggregate(combustiveis)
+        combustivel = agg.combustivel
+        combustiveis = agg.combustiveis
+      } else if (typeof combustivel === 'number') {
+        combustivel = { tipo: 'nao_informado', valor: combustivel }
+        combustiveis = [{ tipo: 'nao_informado', valor: combustivel.valor }]
+      } else if (typeof combustivel === 'object' && combustivel !== null) {
+        combustiveis = getCombustiveisList(input)
+      }
+
       const registro: Registro = {
         id: id ?? crypto.randomUUID(),
         data: input.data,
         kmInicial: input.kmInicial,
         kmFinal: input.kmFinal,
         ganhos: { ...input.ganhos },
-        combustivel: input.combustivel,
+        combustivel,
+        combustiveis,
         outrosGastos: input.outrosGastos ?? 0,
         observacoes: input.observacoes ?? '',
         atualizadoEm: new Date().toISOString(),

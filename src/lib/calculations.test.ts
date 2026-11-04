@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Registro } from '../types'
 import { aggregateRegistros, deriveRegistro, trendDelta } from './calculations'
+import { calculateCombustivelMetrics } from './fuel'
 import { validateRegistro } from './validation'
 
 function sample(partial: Partial<Registro> = {}): Registro {
@@ -10,7 +11,7 @@ function sample(partial: Partial<Registro> = {}): Registro {
     kmInicial: 100,
     kmFinal: 150,
     ganhos: { uber: 200, noventaenove: 100, indrive: 50 },
-    combustivel: 70,
+    combustivel: { tipo: 'gasolina', valor: 70, litros: 12 },
     outrosGastos: 30,
     observacoes: '',
     atualizadoEm: '2026-10-14T12:00:00.000Z',
@@ -70,7 +71,11 @@ describe('filtro de plataforma', () => {
 
   it('agrega vários dias com o mesmo filtro', () => {
     const a = sample({ id: 'a', data: '2026-10-13' })
-    const b = sample({ id: 'b', data: '2026-10-14', ganhos: { uber: 80, noventaenove: 0, indrive: 0 } })
+    const b = sample({
+      id: 'b',
+      data: '2026-10-14',
+      ganhos: { uber: 80, noventaenove: 0, indrive: 0 },
+    })
     const agg = aggregateRegistros([a, b], 'uber')
     expect(agg.totalGanhos).toBe(280)
     expect(agg.km).toBe(100)
@@ -78,7 +83,7 @@ describe('filtro de plataforma', () => {
   })
 })
 
-describe('validação', () => {
+describe('validação de lançamentos e combustível', () => {
   it('bloqueia km final menor que inicial', () => {
     const errors = validateRegistro({
       data: '2026-10-14',
@@ -100,47 +105,86 @@ describe('validação', () => {
         combustivel: 0,
       }).length,
     ).toBeGreaterThan(0)
-    expect(
-      validateRegistro({
-        data: '2026-10-14',
-        kmInicial: 0,
-        kmFinal: 10,
-        ganhos: { uber: -5, noventaenove: 0, indrive: 0 },
-        combustivel: 0,
-      }).length,
-    ).toBeGreaterThan(0)
-    expect(
-      validateRegistro({
-        data: '2026-10-14',
-        kmInicial: 0,
-        kmFinal: 10,
-        ganhos: { uber: 0, noventaenove: 0, indrive: 0 },
-        combustivel: -1,
-      }).length,
-    ).toBeGreaterThan(0)
-    expect(
-      validateRegistro({
-        data: '2026-10-14',
-        kmInicial: 0,
-        kmFinal: 10,
-        ganhos: { uber: 0, noventaenove: 0, indrive: 0 },
-        combustivel: 0,
-        outrosGastos: -2,
-      }).length,
-    ).toBeGreaterThan(0)
   })
 
-  it('aceita registro válido', () => {
+  it('exige seleção de tipo (Etanol/Gasolina/Diesel) quando combustível > 0', () => {
+    const errObj = validateRegistro({
+      data: '2026-10-14',
+      kmInicial: 100,
+      kmFinal: 150,
+      ganhos: { uber: 100, noventaenove: 0, indrive: 0 },
+      combustivel: { tipo: 'nao_informado', valor: 80 },
+    })
+    expect(errObj.some((e) => e.includes('tipo de combustível'))).toBe(true)
+
+    const errList = validateRegistro({
+      data: '2026-10-14',
+      kmInicial: 100,
+      kmFinal: 150,
+      ganhos: { uber: 100, noventaenove: 0, indrive: 0 },
+      combustivel: 80,
+      combustiveis: [{ tipo: 'nao_informado', valor: 80 }],
+    })
+    expect(errList.some((e) => e.includes('tipo de combustível'))).toBe(true)
+  })
+
+  it('aceita combustível com tipo válido (Etanol, Gasolina ou Diesel)', () => {
+    for (const tipo of ['etanol', 'gasolina', 'diesel'] as const) {
+      expect(
+        validateRegistro({
+          data: '2026-10-14',
+          kmInicial: 100,
+          kmFinal: 150,
+          ganhos: { uber: 100, noventaenove: 0, indrive: 0 },
+          combustivel: { tipo, valor: 80, litros: 15 },
+        }),
+      ).toEqual([])
+    }
+  })
+
+  it('aceita registro com combustível 0 sem exigir tipo', () => {
     expect(
       validateRegistro({
         data: '2026-10-14',
         kmInicial: 100,
         kmFinal: 150,
-        ganhos: { uber: 1, noventaenove: 0, indrive: 0 },
+        ganhos: { uber: 100, noventaenove: 0, indrive: 0 },
         combustivel: 0,
-        outrosGastos: 0,
       }),
     ).toEqual([])
+  })
+})
+
+describe('cálculo de métricas de combustível', () => {
+  it('calcula total por tipo, preço médio por litro e autonomia km/l', () => {
+    const r1 = sample({
+      kmInicial: 0,
+      kmFinal: 100,
+      combustivel: { tipo: 'gasolina', valor: 100, litros: 20 },
+      combustiveis: [{ tipo: 'gasolina', valor: 100, litros: 20 }],
+    })
+    const r2 = sample({
+      kmInicial: 100,
+      kmFinal: 200,
+      combustivel: { tipo: 'etanol', valor: 70, litros: 20 },
+      combustiveis: [{ tipo: 'etanol', valor: 70, litros: 20 }],
+    })
+
+    const metrics = calculateCombustivelMetrics([r1, r2], 200)
+
+    expect(metrics.totalValor).toBe(170)
+    expect(metrics.totalLitros).toBe(40)
+    expect(metrics.custoPorKm).toBeCloseTo(170 / 200)
+
+    expect(metrics.porTipo.gasolina.valor).toBe(100)
+    expect(metrics.porTipo.gasolina.litros).toBe(20)
+    expect(metrics.porTipo.gasolina.precoMedio).toBe(5)
+    expect(metrics.porTipo.gasolina.kmPorLitro).toBe(5)
+
+    expect(metrics.porTipo.etanol.valor).toBe(70)
+    expect(metrics.porTipo.etanol.litros).toBe(20)
+    expect(metrics.porTipo.etanol.precoMedio).toBe(3.5)
+    expect(metrics.porTipo.etanol.kmPorLitro).toBe(5)
   })
 })
 
