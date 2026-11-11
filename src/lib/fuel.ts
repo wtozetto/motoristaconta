@@ -128,6 +128,14 @@ export function calculateCombustivelMetrics(
     diesel: { valor: 0, litros: 0, precoMedio: 0, kmTotal: 0, kmPorLitro: null },
     nao_informado: { valor: 0, litros: 0, precoMedio: 0, kmTotal: 0, kmPorLitro: null },
   }
+  // Preço médio por litro usa apenas abastecimentos com litragem informada;
+  // valor sem litros entra no total do tipo, mas não contamina o preço médio.
+  const valorComLitros: Record<CombustivelTipo, number> = {
+    etanol: 0,
+    gasolina: 0,
+    diesel: 0,
+    nao_informado: 0,
+  }
 
   for (const reg of registros) {
     const km = Math.max(0, reg.kmFinal - reg.kmInicial)
@@ -139,6 +147,7 @@ export function calculateCombustivelMetrics(
       porTipo[t].valor += item.valor
       if (item.litros && item.litros > 0) {
         porTipo[t].litros += item.litros
+        valorComLitros[t] += item.valor
         // Atribui KM proporcional aos litros abastecidos daquele tipo no dia
         const frac = totalLitrosDia > 0 ? item.litros / totalLitrosDia : 1
         porTipo[t].kmTotal += km * frac
@@ -154,7 +163,7 @@ export function calculateCombustivelMetrics(
     totalValor += entry.valor
     totalLitros += entry.litros
     if (entry.litros > 0) {
-      entry.precoMedio = entry.valor / entry.litros
+      entry.precoMedio = valorComLitros[t] / entry.litros
       entry.kmPorLitro = entry.kmTotal > 0 ? entry.kmTotal / entry.litros : null
     }
   }

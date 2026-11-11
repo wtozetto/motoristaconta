@@ -48,8 +48,16 @@ export function decodeJwtPayload(credential: string): GoogleJwtPayload {
   if (!payload) {
     throw new Error('Credencial Google inválida.')
   }
-  const normalized = payload.replaceAll('-', '+').replaceAll('_', '/')
-  const json = atob(normalized)
+  const normalized = payload
+    .replaceAll('-', '+')
+    .replaceAll('_', '/')
+    .padEnd(Math.ceil(payload.length / 4) * 4, '=')
+  let json: string
+  try {
+    json = atob(normalized)
+  } catch {
+    throw new Error('Credencial Google inválida.')
+  }
   return JSON.parse(json) as GoogleJwtPayload
 }
 

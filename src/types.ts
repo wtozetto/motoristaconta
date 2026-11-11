@@ -178,7 +178,7 @@ export const COMBUSTIVEL_COLORS: Record<CombustivelTipo, string> = {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  metaRsPorKm: 0,
+  metaRsPorKm: 2.5,
   reservaPercent: 15,
   theme: 'system',
   alertaManutencaoDias: 30,

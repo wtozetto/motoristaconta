@@ -6,6 +6,7 @@ import type { GoogleSession } from '../types'
 import { AuthProvider } from './AuthContext'
 import {
   clearSession,
+  decodeJwtPayload,
   isAuthenticated,
   loadSession,
   saveSession,
@@ -37,6 +38,25 @@ describe('sessão local', () => {
     clearSession()
     expect(loadSession()).toBeNull()
     expect(isAuthenticated(null)).toBe(false)
+  })
+})
+
+describe('decode de credencial Google (JWT)', () => {
+  const b64url = (obj: object): string =>
+    btoa(JSON.stringify(obj))
+      .replaceAll('+', '-')
+      .replaceAll('/', '_')
+      .replaceAll('=', '')
+
+  it('lê payload base64url sem padding', () => {
+    const credential = `header.${b64url({ sub: 'g-1', email: 'ana@example.com', name: 'Ana' })}.assinatura`
+    const payload = decodeJwtPayload(credential)
+    expect(payload.sub).toBe('g-1')
+    expect(payload.email).toBe('ana@example.com')
+  })
+
+  it('rejeita credencial sem payload', () => {
+    expect(() => decodeJwtPayload('apenas-header')).toThrow('Credencial Google inválida.')
   })
 })
 

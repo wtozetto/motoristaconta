@@ -8,12 +8,15 @@ import { todayISO } from './format'
 
 export function getKmAtual(registros: Registro[], manutencoes: Manutencao[] = []): number {
   let maxKm = 0
+  // O KM atual é o maior odômetro visto em qualquer fonte: lançamentos e
+  // manutenções. Uma manutenção realizada acima do último lançamento válido
+  // não pode ser ignorada.
   for (const r of registros) {
-    if (r.kmFinal > maxKm) maxKm = r.kmFinal
+    if (Number.isFinite(r.kmFinal) && r.kmFinal > maxKm) maxKm = r.kmFinal
   }
-  if (maxKm === 0) {
-    for (const m of manutencoes) {
-      if (m.kmRealizacao > maxKm) maxKm = m.kmRealizacao
+  for (const m of manutencoes) {
+    if (Number.isFinite(m.kmRealizacao) && m.kmRealizacao > maxKm) {
+      maxKm = m.kmRealizacao
     }
   }
   return maxKm
@@ -163,7 +166,10 @@ export function calculateManutencaoMetrics(
   let totalGasto = 0
   const porCategoria: Record<string, number> = {}
 
+  // "Total investido" considera apenas serviços concluídos; itens programados
+  // são orçamento futuro e não entram no gasto realizado.
   for (const m of manutencoes) {
+    if (m.status !== 'concluido') continue
     totalGasto += m.valor
     porCategoria[m.categoria] = (porCategoria[m.categoria] ?? 0) + m.valor
   }
