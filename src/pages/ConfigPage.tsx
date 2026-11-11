@@ -75,7 +75,10 @@ export function ConfigPage() {
               step="0.01"
               className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-950"
               value={settings.metaRsPorKm}
-              onChange={(e) => updateSettings({ metaRsPorKm: Number(e.target.value) })}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                updateSettings({ metaRsPorKm: Number.isFinite(n) && n >= 0 ? n : 0 })
+              }}
             />
           </label>
           <label className="text-sm">
@@ -87,7 +90,12 @@ export function ConfigPage() {
               step="1"
               className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-950"
               value={settings.reservaPercent}
-              onChange={(e) => updateSettings({ reservaPercent: Number(e.target.value) })}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                updateSettings({
+                  reservaPercent: Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0,
+                })
+              }}
             />
           </label>
         </div>

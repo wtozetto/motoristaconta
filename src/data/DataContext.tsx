@@ -142,6 +142,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } else {
         await mergeRegistros(incoming)
       }
+      // A importação muda os dados locais; atualiza o carimbo para que a
+      // próxima sincronização não considere o Drive mais recente e sobrescreva
+      // os registros recém-importados.
+      const now = new Date().toISOString()
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
       await refresh()
     },
     [refresh],
@@ -202,6 +208,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       } else {
         await mergeManutencoes(incoming)
       }
+      const now = new Date().toISOString()
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
       await refresh()
     },
     [refresh],

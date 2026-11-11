@@ -22,8 +22,9 @@ import {
 } from '../lib/periods'
 import { buildTips } from '../lib/tips'
 import { formatBRL, formatKm, todayISO } from '../lib/format'
-import { calculateCombustivelMetrics, getCombustiveisList } from '../lib/fuel'
+import { buildCombustivelAggregate, calculateCombustivelMetrics, getCombustiveisList } from '../lib/fuel'
 import { getAllManutencaoAlertas, getKmAtual } from '../lib/maintenance'
+import { validateRegistro } from '../lib/validation'
 import type {
   CombustivelTipo,
   PeriodPreset,
@@ -500,32 +501,44 @@ function QuickEdit({
     primaryFuel.litros,
   )
   const [outros, setOutros] = useState(registro.outrosGastos ?? 0)
+  const [errors, setErrors] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
 
   return (
     <form
       className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
       onSubmit={async (e) => {
         e.preventDefault()
-        await onSave({
+        // Preserva os demais abastecimentos do lançamento; apenas o primeiro
+        // item é editado aqui. O agregado é recalculado a partir da lista.
+        const baseList = getCombustiveisList(registro)
+        const mergedList = baseList.map((item, index) =>
+          index === 0
+            ? { tipo: fuelTipo, valor: combustivelValor, litros: combustivelLitros }
+            : item,
+        )
+        const agg = buildCombustivelAggregate(mergedList)
+        const payload: RegistroInput = {
           data,
           kmInicial,
           kmFinal,
           ganhos: { uber, noventaenove: n99, indrive },
-          combustivel: {
-            tipo: fuelTipo,
-            valor: combustivelValor,
-            litros: combustivelLitros,
-          },
-          combustiveis: [
-            {
-              tipo: fuelTipo,
-              valor: combustivelValor,
-              litros: combustivelLitros,
-            },
-          ],
+          combustivel: agg.combustivel,
+          combustiveis: agg.combustiveis,
           outrosGastos: outros,
           observacoes: registro.observacoes,
-        })
+        }
+        const nextErrors = validateRegistro(payload)
+        setErrors(nextErrors)
+        if (nextErrors.length > 0) return
+        setSaving(true)
+        try {
+          await onSave(payload)
+        } catch (err) {
+          setErrors([err instanceof Error ? err.message : 'Não foi possível salvar.'])
+        } finally {
+          setSaving(false)
+        }
       }}
     >
       <h2 className="font-semibold">Editar lançamento de {registro.data}</h2>
@@ -614,12 +627,20 @@ function QuickEdit({
         />
       </div>
 
+      {errors.length > 0 ? (
+        <ul className="list-disc space-y-1 pl-5 text-sm text-rose-600" role="alert">
+          {errors.map((err) => (
+            <li key={err}>{err}</li>
+          ))}
+        </ul>
+      ) : null}
       <div className="flex gap-2">
         <button
           type="submit"
-          className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500"
+          disabled={saving}
+          className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
         >
-          Salvar
+          {saving ? 'Salvando…' : 'Salvar'}
         </button>
         <button
           type="button"

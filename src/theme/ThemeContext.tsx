@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { loadSettings, saveSettings } from '../settings/storage'
+import { setLocalModificacaoStamp } from '../drive/syncStorage'
 import type { AppSettings, ThemePreference } from '../types'
 
 interface ThemeContextValue {
@@ -50,6 +51,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const persist = useCallback((next: AppSettings) => {
     setSettings(next)
     saveSettings(next)
+    // Preferências locais alteradas também contam como modificação: evita que a
+    // sincronização use um carimbo antigo e prefira a versão remota.
+    setLocalModificacaoStamp(new Date().toISOString())
   }, [])
 
   const setTheme = useCallback(

@@ -132,4 +132,89 @@ describe('JSON import/export', () => {
     const replaced = applyImportManutencoes([manutencaoExemplo], [mExtra], 'replace')
     expect(replaced).toEqual([mExtra])
   })
+
+  it('não quebra com ganhos nulos ou malformados no JSON', () => {
+    const raw = JSON.stringify({
+      version: 2,
+      app: 'MotoristaConta',
+      exportedAt: '2026-10-14T00:00:00.000Z',
+      settings: DEFAULT_SETTINGS,
+      registros: [
+        {
+          id: 'r-ganhos-null',
+          data: '2026-10-14',
+          kmInicial: 10,
+          kmFinal: 20,
+          ganhos: null,
+          combustivel: 0,
+          outrosGastos: 0,
+          atualizadoEm: '2026-10-14T10:00:00.000Z',
+        },
+        {
+          id: 'r-lixo',
+          data: '2026-10-14',
+          kmInicial: 'abc',
+          ganhos: { uber: 'xyz', noventaenove: -5, indrive: 20 },
+          combustivel: { valor: '??' },
+          outrosGastos: -3,
+          atualizadoEm: '2026-10-14T10:00:00.000Z',
+        },
+      ],
+    })
+    const parsed = parseBackupJson(raw)
+    expect(parsed.registros[0].ganhos).toEqual({ uber: 0, noventaenove: 0, indrive: 0 })
+    expect(parsed.registros[1].kmInicial).toBe(0)
+    expect(parsed.registros[1].kmFinal).toBe(0)
+    expect(parsed.registros[1].ganhos.uber).toBe(0)
+    expect(parsed.registros[1].ganhos.noventaenove).toBe(0)
+    expect(parsed.registros[1].ganhos.indrive).toBe(20)
+    expect(parsed.registros[1].outrosGastos).toBe(0)
+  })
+
+  it('saniza configurações inválidas no backup importado', () => {
+    const raw = JSON.stringify({
+      version: 2,
+      app: 'MotoristaConta',
+      exportedAt: '2026-10-14T00:00:00.000Z',
+      settings: {
+        metaRsPorKm: -4,
+        reservaPercent: 250,
+        theme: 'neon',
+        alertaManutencaoDias: 0,
+        alertaManutencaoKm: -10,
+      },
+      registros: [],
+    })
+    const parsed = parseBackupJson(raw)
+    expect(parsed.settings.metaRsPorKm).toBe(0)
+    expect(parsed.settings.reservaPercent).toBe(100)
+    expect(parsed.settings.theme).toBe('system')
+    expect(parsed.settings.alertaManutencaoDias).toBe(1)
+    expect(parsed.settings.alertaManutencaoKm).toBe(0)
+  })
+
+  it('saniza valores numéricos inválidos de manutenção', () => {
+    const raw = JSON.stringify({
+      version: 2,
+      app: 'MotoristaConta',
+      exportedAt: '2026-10-14T00:00:00.000Z',
+      settings: DEFAULT_SETTINGS,
+      registros: [],
+      manutencoes: [
+        {
+          id: 'm-ruim',
+          data: '2026-10-14',
+          categoria: 'Freios',
+          descricao: 'Pastilhas',
+          valor: 'sem valor',
+          kmRealizacao: 'não sei',
+          status: 'concluido',
+        },
+      ],
+    })
+    const parsed = parseBackupJson(raw)
+    const manutencao = parsed.manutencoes?.[0]
+    expect(manutencao?.valor).toBe(0)
+    expect(manutencao?.kmRealizacao).toBe(0)
+  })
 })

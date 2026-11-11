@@ -40,10 +40,18 @@ interface DashboardChartsProps {
 
 export function DashboardCharts({ registros, filter, grouping }: DashboardChartsProps) {
   const agg = aggregateRegistros(registros, filter)
+  // Com filtro de app ativo, os gráficos de participação mostram apenas o
+  // aplicativo selecionado (alinhado aos cartões e à tabela).
+  const plataformasFiltradas = {
+    uber: filter === 'todas' || filter === 'uber' ? agg.ganhosPorPlataforma.uber : 0,
+    noventaenove:
+      filter === 'todas' || filter === 'noventaenove' ? agg.ganhosPorPlataforma.noventaenove : 0,
+    indrive: filter === 'todas' || filter === 'indrive' ? agg.ganhosPorPlataforma.indrive : 0,
+  }
   const donut = [
-    { name: PLATFORM_LABEL.uber, value: agg.ganhosPorPlataforma.uber, key: 'uber' },
-    { name: PLATFORM_LABEL.noventaenove, value: agg.ganhosPorPlataforma.noventaenove, key: 'n99' },
-    { name: PLATFORM_LABEL.indrive, value: agg.ganhosPorPlataforma.indrive, key: 'indrive' },
+    { name: PLATFORM_LABEL.uber, value: plataformasFiltradas.uber, key: 'uber' },
+    { name: PLATFORM_LABEL.noventaenove, value: plataformasFiltradas.noventaenove, key: 'n99' },
+    { name: PLATFORM_LABEL.indrive, value: plataformasFiltradas.indrive, key: 'indrive' },
   ]
   const bars = donut
 

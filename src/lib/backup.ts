@@ -101,10 +101,7 @@ export function parseBackupJson(raw: string): BackupPayload {
   const manutencoes = Array.isArray(data.manutencoes)
     ? data.manutencoes.map(normalizeManutencao)
     : []
-  const settings: AppSettings = {
-    ...DEFAULT_SETTINGS,
-    ...(data.settings ?? {}),
-  }
+  const settings: AppSettings = normalizeSettings(data.settings)
   const exportedAt =
     typeof data.exportedAt === 'string' ? data.exportedAt : new Date().toISOString()
   const ultimaSincronizacao =
@@ -133,12 +130,34 @@ export function parseBackupJson(raw: string): BackupPayload {
   }
 }
 
+function normalizeSettings(raw: unknown): AppSettings {
+  const parsed =
+    raw && typeof raw === 'object' ? (raw as Partial<AppSettings>) : {}
+  const num = (value: unknown, fallback: number): number => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+  }
+  const reserva = Math.min(100, Math.max(0, num(parsed.reservaPercent, DEFAULT_SETTINGS.reservaPercent)))
+  return {
+    metaRsPorKm: Math.max(0, num(parsed.metaRsPorKm, DEFAULT_SETTINGS.metaRsPorKm)),
+    reservaPercent: reserva,
+    theme:
+      parsed.theme === 'light' || parsed.theme === 'dark' || parsed.theme === 'system'
+        ? parsed.theme
+        : DEFAULT_SETTINGS.theme,
+    alertaManutencaoDias: Math.max(1, Math.round(num(parsed.alertaManutencaoDias, DEFAULT_SETTINGS.alertaManutencaoDias))),
+    alertaManutencaoKm: Math.max(0, Math.round(num(parsed.alertaManutencaoKm, DEFAULT_SETTINGS.alertaManutencaoKm))),
+  }
+}
 export function normalizeRegistro(item: unknown, index = 0): Registro {
   if (!item || typeof item !== 'object') {
     throw new Error(`Registro inválido na posição ${index + 1}.`)
   }
   const r = item as Partial<Registro>
-  const ganhos = r.ganhos ?? { uber: 0, noventaenove: 0, indrive: 0 }
+  const ganhos =
+    r.ganhos && typeof r.ganhos === 'object'
+      ? (r.ganhos as Registro['ganhos'])
+      : { uber: 0, noventaenove: 0, indrive: 0 }
 
   let combustivel: CombustivelData
   let combustiveis: CombustivelItem[] | undefined
@@ -176,19 +195,23 @@ export function normalizeRegistro(item: unknown, index = 0): Registro {
     combustiveis = [{ tipo: 'nao_informado', valor }]
   }
 
+  const num = (value: unknown, fallback = 0): number => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+  }
   return {
     id: String(r.id ?? crypto.randomUUID()),
     data: String(r.data ?? ''),
-    kmInicial: Number(r.kmInicial ?? 0),
-    kmFinal: Number(r.kmFinal ?? 0),
+    kmInicial: Math.max(0, num(r.kmInicial)),
+    kmFinal: Math.max(0, num(r.kmFinal)),
     ganhos: {
-      uber: Number(ganhos.uber ?? 0),
-      noventaenove: Number(ganhos.noventaenove ?? 0),
-      indrive: Number(ganhos.indrive ?? 0),
+      uber: Math.max(0, num(ganhos.uber)),
+      noventaenove: Math.max(0, num(ganhos.noventaenove)),
+      indrive: Math.max(0, num(ganhos.indrive)),
     },
     combustivel,
     combustiveis,
-    outrosGastos: Number(r.outrosGastos ?? 0),
+    outrosGastos: Math.max(0, num(r.outrosGastos)),
     observacoes: String(r.observacoes ?? ''),
     atualizadoEm: String(r.atualizadoEm ?? new Date().toISOString()),
   }
@@ -199,13 +222,17 @@ export function normalizeManutencao(item: unknown, index = 0): Manutencao {
     throw new Error(`Manutenção inválida na posição ${index + 1}.`)
   }
   const m = item as Partial<Manutencao>
+  const num = (value: unknown, fallback = 0): number => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n : fallback
+  }
   return {
     id: String(m.id ?? crypto.randomUUID()),
     data: String(m.data ?? ''),
     categoria: String(m.categoria ?? 'Outros'),
     descricao: String(m.descricao ?? ''),
-    valor: Number(m.valor ?? 0),
-    kmRealizacao: Number(m.kmRealizacao ?? 0),
+    valor: Math.max(0, num(m.valor)),
+    kmRealizacao: Math.max(0, num(m.kmRealizacao)),
     proximaData: m.proximaData ? String(m.proximaData) : undefined,
     proximaKm:
       m.proximaKm !== undefined && m.proximaKm !== null && !isNaN(Number(m.proximaKm))
