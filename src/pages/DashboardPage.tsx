@@ -56,6 +56,7 @@ export function DashboardPage() {
   const [editing, setEditing] = useState<Registro | null>(null)
   const [pendingDelete, setPendingDelete] = useState<Registro | null>(null)
   const [includeMaintenance, setIncludeMaintenance] = useState(false)
+  const [chartView, setChartView] = useState<'summary' | 'evolution' | 'comparison'>('summary')
 
   const range = useMemo(
     () => getPeriodRange(preset, new Date(), custom),
@@ -530,7 +531,39 @@ export function DashboardPage() {
       </section>
 
       {/* Gráficos de Plataformas e Resultados */}
-      <DashboardCharts registros={currentRows} filter={filter} grouping={preset} />
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-bold">Gráficos</h2>
+          <div className="mt-2 flex flex-wrap gap-2" role="tablist" aria-label="Visualização dos gráficos">
+            {([
+              ['summary', 'Resumo'],
+              ['evolution', 'Evolução'],
+              ['comparison', 'Comparativo'],
+            ] as const).map(([view, label]) => (
+              <button
+                key={view}
+                type="button"
+                role="tab"
+                aria-selected={chartView === view}
+                onClick={() => setChartView(view)}
+                className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                  chartView === view
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <DashboardCharts
+          registros={chartView === 'evolution' ? registros : currentRows}
+          filter={filter}
+          grouping={preset}
+          view={chartView}
+        />
+      </section>
 
       {editing ? (
         <p className="text-sm text-slate-500">

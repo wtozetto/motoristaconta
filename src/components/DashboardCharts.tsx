@@ -21,7 +21,8 @@ import { COMBUSTIVEL_COLORS, COMBUSTIVEL_LABEL, PLATFORM_LABEL } from '../types'
 import { aggregateRegistros } from '../lib/calculations'
 import { formatBRL } from '../lib/format'
 import { getCombustiveisList } from '../lib/fuel'
-import { groupRegistros } from '../lib/periods'
+import { addDays, groupRegistros } from '../lib/periods'
+import { todayISO } from '../lib/format'
 
 const COLORS = {
   uber: '#111111',
@@ -36,9 +37,15 @@ interface DashboardChartsProps {
   registros: Registro[]
   filter: PlatformFilter
   grouping: PeriodPreset
+  view?: 'summary' | 'evolution' | 'comparison'
 }
 
-export function DashboardCharts({ registros, filter, grouping }: DashboardChartsProps) {
+export function DashboardCharts({
+  registros,
+  filter,
+  grouping,
+  view = 'summary',
+}: DashboardChartsProps) {
   const agg = aggregateRegistros(registros, filter)
   // Com filtro de app ativo, os gráficos de participação mostram apenas o
   // aplicativo selecionado (alinhado aos cartões e à tabela).
@@ -67,6 +74,45 @@ export function DashboardCharts({ registros, filter, grouping }: DashboardCharts
         gastos: m.totalGastos,
       }
     })
+
+  if (view === 'evolution') {
+    const end = todayISO()
+    const recordsByDate = new Map<string, Registro[]>()
+    for (const registro of registros) {
+      const rows = recordsByDate.get(registro.data)
+      if (rows) rows.push(registro)
+      else recordsByDate.set(registro.data, [registro])
+    }
+    const evolution = Array.from({ length: 30 }, (_, index) => {
+      const date = addDays(end, index - 29)
+      const rows = recordsByDate.get(date)
+      const metrics = rows ? aggregateRegistros(rows, filter) : null
+      return {
+        name: date,
+        ganhos: metrics?.totalGanhos ?? 0,
+        gastos: metrics?.totalGastos ?? 0,
+      }
+    })
+
+    return (
+      <ChartCard title="Evolução diária de ganhos e gastos — últimos 30 dias">
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={evolution}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+            <XAxis dataKey="name" tickFormatter={(value: string) => value.slice(5)} minTickGap={24} />
+            <YAxis />
+            <Tooltip
+              labelFormatter={(value) => String(value)}
+              formatter={(value) => formatBRL(Number(value))}
+            />
+            <Legend />
+            <Line type="monotone" dataKey="ganhos" stroke={COLORS.ganhos} name="Ganhos" dot={false} />
+            <Line type="monotone" dataKey="gastos" stroke={COLORS.gastos} name="Gastos" dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    )
+  }
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
