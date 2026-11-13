@@ -62,8 +62,13 @@ export function Layout() {
   return (
     <div className="min-h-dvh bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white lg:p-5 dark:lg:border-slate-800 dark:lg:bg-slate-900">
-        <p className="text-lg font-bold tracking-tight">MotoristaConta</p>
-        <p className="text-xs text-slate-500">ContaRota</p>
+        <div className="flex items-center gap-3">
+          <img src="/icon-192.png" alt="" className="h-10 w-10 object-contain" />
+          <div>
+            <p className="text-lg font-bold tracking-tight">MotoristaConta</p>
+            <p className="text-xs text-slate-500">ContaRota</p>
+          </div>
+        </div>
         <nav className="mt-8 flex flex-col gap-2" aria-label="Principal">
           <NavItems />
         </nav>
@@ -89,10 +94,13 @@ export function Layout() {
 
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-900/90">
-          <div>
-            <p className="font-bold">MotoristaConta</p>
-            <p className="text-xs text-slate-500">{session?.name}</p>
-            <DriveBadge />
+          <div className="flex items-center gap-2">
+            <img src="/icon-192.png" alt="" className="h-8 w-8 object-contain" />
+            <div>
+              <p className="font-bold">MotoristaConta</p>
+              <p className="text-xs text-slate-500">{session?.name}</p>
+              <DriveBadge />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <NavLink to="/atalhos" className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">

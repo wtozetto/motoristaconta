@@ -12,10 +12,15 @@ export function LoginPage() {
   return (
     <div className="flex min-h-dvh items-center justify-center bg-slate-50 px-4 dark:bg-slate-950">
       <main className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-          ContaRota
-        </p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight">MotoristaConta</h1>
+        <div className="flex items-center gap-3">
+          <img src="/icon-192.png" alt="" className="h-12 w-12 object-contain" />
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+              ContaRota
+            </p>
+            <h1 className="mt-1 text-3xl font-bold tracking-tight">MotoristaConta</h1>
+          </div>
+        </div>
         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
           Controle ganhos, km e lucro dos apps Uber, 99 e Indrive. Os lançamentos ficam neste
           aparelho e um backup automático vai para o seu Google Drive.
