@@ -1,8 +1,9 @@
 # MotoristaConta | ContaRota
 
-SPA estática para motoristas de Uber, 99 e Indrive acompanharem ganhos, km, gastos e lucro.
+Aplicação para motoristas de Uber, 99 e Indrive acompanharem ganhos, km, gastos e lucro.
 
-- **100% no navegador.** IndexedDB (Dexie) + LocalStorage. Sem backend, sem funções serverless, sem banco remoto.
+- **Dados pessoais no navegador.** IndexedDB (Dexie) + LocalStorage.
+- **Contador de usuários:** função serverless consulta o Supabase e atualiza o número exibido no login a cada 5 minutos.
 - **Google Drive automático:** sincroniza no login, após alterações e a cada 5 minutos. Lançamentos, manutenções, vencimentos e preferências são salvos em `MotoristaConta-dados.json` na **sua** conta. Também anexa acessos em `MotoristaConta-acessos.json`. Exportar JSON/CSV no aparelho continua disponível.
 - **Dashboard resumido:** mostra ganhos e km do dia, resultados mensais e anuais, progresso da meta e próximos vencimentos.
 - **Lembretes:** contas do veículo com data, valor e status de pagamento, ordenadas por vencimento.
@@ -18,6 +19,7 @@ npm run dev
 ```
 
 Abra o endereço que o Vite mostrar (em geral `http://localhost:5173`).
+O servidor de desenvolvimento do Vite não executa funções da Vercel; para testar o contador localmente, use `npx vercel dev` com as variáveis do Supabase configuradas no ambiente local.
 
 ```bash
 npm test
@@ -31,8 +33,10 @@ npm run preview
 | --- | --- | --- |
 | `VITE_GOOGLE_CLIENT_ID` | Sim, para login real | Client ID OAuth do tipo *Aplicativo da Web* |
 | `VITE_DEV_BYPASS_AUTH` | Não | Só testes locais. `true` mostra “Entrar em modo de teste”. **Nunca** use isso em produção. |
+| `SUPABASE_URL` | Sim, para o contador | URL do projeto Supabase; usada apenas pela função serverless |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sim, para o contador | Chave secreta do Supabase; configure apenas no ambiente server-side, nunca no frontend |
 
-Arquivo de exemplo: `.env.example` (somente `VITE_GOOGLE_CLIENT_ID`).
+Arquivo de exemplo: `.env.example` (contém apenas nomes e valores vazios; não coloque chaves secretas no frontend).
 
 O login Google real **não dá para automatizar de ponta a ponta** neste repositório. A guarda de rota é coberta nos testes com sessão mockada no LocalStorage.
 
@@ -52,13 +56,13 @@ O login Google real **não dá para automatizar de ponta a ponta** neste reposit
 
 Sem Client ID o app ainda abre uma tela de login polida explicando a configuração.
 
-## Deploy GitHub → Vercel (estático)
+## Deploy GitHub → Vercel
 
 1. Crie um repositório no GitHub e envie este projeto (o usuário faz o `git` / push).
 2. Em [Vercel](https://vercel.com): **Add New Project** → importe o repo.
-3. Framework: Vite. Build: `npm run build`. Output: `dist`.
-4. Em **Settings → Environment Variables** adicione `VITE_GOOGLE_CLIENT_ID` (Production e Preview).
-5. Deploy. O arquivo `vercel.json` reescreve todas as rotas para `index.html` (SPA).
+3. Framework: Vite. Build: `npm run build`. Output: `dist`. A função em `api/` é implantada como backend serverless.
+4. Em **Settings → Environment Variables** adicione `VITE_GOOGLE_CLIENT_ID`, `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` (Production e Preview). Mantenha a chave de serviço somente no ambiente server-side.
+5. Deploy. O arquivo `vercel.json` reescreve as rotas do app para `index.html` (SPA); a rota da API é servida pela função serverless.
 6. Copie a URL `https://….vercel.app` e cole nas **origens JavaScript autorizadas** do Client ID.
 
 CLI (se você já estiver autenticado):
@@ -219,3 +223,5 @@ Em **Lançamentos** e **Dashboard**, o filtro Todas | Uber | 99 | Indrive muda o
 ## Stack
 
 React 19 + Vite + TypeScript + Tailwind CSS + Dexie.js + Recharts + Google Identity Services + PWA (vite-plugin-pwa).
+   
+ 
