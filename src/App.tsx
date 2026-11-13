@@ -12,6 +12,7 @@ import { LoginPage } from './pages/LoginPage'
 import { LembretesPage } from './pages/LembretesPage'
 import { ManutencaoPage } from './pages/ManutencaoPage'
 import { CategoriasPage } from './pages/CategoriasPage'
+import { AtalhosPage } from './pages/AtalhosPage'
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/manutencao" element={<ManutencaoPage />} />
               <Route path="/categorias" element={<CategoriasPage />} />
+              <Route path="/atalhos" element={<AtalhosPage />} />
               <Route path="/lembretes" element={<LembretesPage />} />
               <Route path="/configuracoes" element={<ConfigPage />} />
             </Route>
