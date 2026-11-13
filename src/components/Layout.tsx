@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext'
 import { useDrive } from '../drive/DriveContext'
 import { DriveBadge } from './DriveBadge'
 import { useSyncTimer } from '../hooks/useSyncTimer'
+import { Toast } from './Toast'
 
 const LINKS = [
   { to: '/lancamentos', label: 'Lançamentos' },
@@ -38,7 +39,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Layout() {
   const { session, logout } = useAuth()
-  const { isInitialSyncing } = useDrive()
+  const { isInitialSyncing, message, status } = useDrive()
   useSyncTimer()
 
   if (isInitialSyncing) {
@@ -105,6 +106,7 @@ export function Layout() {
           <NavItems />
         </div>
       </nav>
+      <Toast message={message} status={status} />
     </div>
   )
 }
