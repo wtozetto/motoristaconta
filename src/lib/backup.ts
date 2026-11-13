@@ -75,7 +75,7 @@ export function serializeBackup(
     manutencoes: structuredClone(manutencoes),
     contasFixas: structuredClone(contasFixas),
     categoriasManutencao: [...categoriasManutencao],
-    categoriasManutencaoAtualizadoEm: categoriasManutencaoAtualizadoEm || modStamp,
+    categoriasManutencaoAtualizadoEm: categoriasManutencaoAtualizadoEm || undefined,
   }
 }
 
@@ -156,7 +156,7 @@ export function parseBackupJson(raw: string): BackupPayload {
     categoriasManutencaoAtualizadoEm:
       typeof data.categoriasManutencaoAtualizadoEm === 'string'
         ? data.categoriasManutencaoAtualizadoEm
-        : ultimaModificacao,
+        : undefined,
   }
 }
 

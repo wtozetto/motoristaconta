@@ -97,18 +97,33 @@ export function compararESincronizar(
 
   // Caso 3: Local está vazio, mas remoto tem dados
   if (localCount === 0 && remoteCount > 0) {
+    const localCategoryStamp =
+      local.categoriasManutencaoAtualizadoEm ??
+      (local.categoriasManutencao?.length ? getModificacaoStamp(local) : '')
+    const remoteCategoryStamp =
+      remoto?.categoriasManutencaoAtualizadoEm ??
+      (remoto?.categoriasManutencao?.length ? getModificacaoStamp(remoto) : '')
+    const localCategoriesAreNewer = localCategoryStamp > remoteCategoryStamp
     const mergedPayload: BackupPayload = {
       ...remoto,
       version: BACKUP_VERSION,
       versaoSchema: BACKUP_VERSION,
       ultimaSincronizacao: now,
+      categoriasManutencao: localCategoriesAreNewer
+        ? local.categoriasManutencao ?? []
+        : remoto?.categoriasManutencao ?? [],
+      categoriasManutencaoAtualizadoEm: localCategoriesAreNewer
+        ? localCategoryStamp
+        : remoteCategoryStamp,
     }
     return {
-      action: 'remote-applied',
-      message: 'Sincronizado — versão mais recente do Google Drive aplicada',
+      action: localCategoriesAreNewer ? 'merged' : 'remote-applied',
+      message: localCategoriesAreNewer
+        ? 'Dados do Drive aplicados; categorias locais preservadas para sincronização'
+        : 'Sincronizado — versão mais recente do Google Drive aplicada',
       mergedPayload,
       needsLocalUpdate: true,
-      needsRemoteUpload: false,
+      needsRemoteUpload: localCategoriesAreNewer,
       mergedRegistros: remoto.registros,
       mergedManutencoes: remoto.manutencoes ?? [],
       mergedContasFixas: remoto.contasFixas ?? [],
@@ -223,8 +238,12 @@ export function compararESincronizar(
   }
 
   let mergedCategorias = local.categoriasManutencao ?? []
-  const localCategoriasStamp = local.categoriasManutencaoAtualizadoEm || localMod
-  const remoteCategoriasStamp = remoto.categoriasManutencaoAtualizadoEm || remoteMod
+  const localCategoriasStamp =
+    local.categoriasManutencaoAtualizadoEm ??
+    (local.categoriasManutencao?.length ? localMod : '')
+  const remoteCategoriasStamp =
+    remoto.categoriasManutencaoAtualizadoEm ??
+    (remoto.categoriasManutencao?.length ? remoteMod : '')
   let mergedCategoriasStamp = localCategoriasStamp
   if (
     JSON.stringify(local.categoriasManutencao ?? []) !==

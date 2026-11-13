@@ -129,6 +129,23 @@ describe('compararESincronizar', () => {
     expect(result.needsRemoteUpload).toBe(true)
   })
 
+  it('sincroniza a exclusão da última categoria sem descartar dados remotos', () => {
+    const local = {
+      ...payload([], '2026-10-10T00:00:00.000Z'),
+      categoriasManutencao: [],
+      categoriasManutencaoAtualizadoEm: '2026-10-10T00:00:00.000Z',
+    }
+    const remote = {
+      ...payload([registro('remote-record', '2026-10-09T00:00:00.000Z')], '2026-10-09T00:00:00.000Z'),
+      categoriasManutencao: ['Lavagem'],
+      categoriasManutencaoAtualizadoEm: '2026-10-08T00:00:00.000Z',
+    }
+    const result = compararESincronizar(local, remote, now)
+    expect(result.mergedPayload.categoriasManutencao).toEqual([])
+    expect(result.mergedRegistros.map((row) => row.id)).toEqual(['remote-record'])
+    expect(result.needsRemoteUpload).toBe(true)
+  })
+
   it('local vazio + remoto com dados → remote-applied', () => {
     const local = payload([], now)
     const remote = payload(
