@@ -7,20 +7,16 @@ interface ToastProps {
 }
 
 export function Toast({ message, status }: ToastProps) {
-  const [visible, setVisible] = useState(false)
+  const [dismissedKey, setDismissedKey] = useState<string | null>(null)
+  const key = message ? `${status}:${message}` : null
 
   useEffect(() => {
-    if (!message) {
-      setVisible(false)
-      return
-    }
-
-    setVisible(true)
-    const timer = window.setTimeout(() => setVisible(false), 5000)
+    if (!key) return
+    const timer = window.setTimeout(() => setDismissedKey(key), 5000)
     return () => window.clearTimeout(timer)
-  }, [message, status])
+  }, [key])
 
-  if (!message || !visible) return null
+  if (!message || !key || dismissedKey === key) return null
 
   const style =
     status === 'error'
@@ -42,7 +38,7 @@ export function Toast({ message, status }: ToastProps) {
       <button
         type="button"
         aria-label="Fechar notificação"
-        onClick={() => setVisible(false)}
+        onClick={() => setDismissedKey(key)}
         className="font-bold opacity-70 hover:opacity-100"
       >
         ×
