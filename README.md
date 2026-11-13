@@ -40,6 +40,43 @@ Arquivo de exemplo: `.env.example` (contém apenas nomes e valores vazios; não 
 
 O login Google real **não dá para automatizar de ponta a ponta** neste repositório. A guarda de rota é coberta nos testes com sessão mockada no LocalStorage.
 
+## Supabase no VS Code
+
+O workspace recomenda a extensão `Supabase.vscode-supabase-extension`. Ela usa a Supabase CLI e uma instância local para inspecionar o schema e criar migrations guiadas pelo Copilot.
+
+1. Instale a extensão recomendada quando o VS Code solicitar.
+2. Instale a [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started) e o Docker Desktop.
+3. Na raiz do projeto, autentique e vincule o projeto:
+
+   ```sh
+   supabase login
+   supabase link --project-ref gpfzwakuzigwfylqipqb
+   ```
+
+4. Antes de sincronizar o schema remoto ou enviar migrations, confira o histórico: `supabase/migrations/001_initial_setup.sql` é uma migration legada que o README anteriormente orientava executar pelo SQL Editor. Verifique se ela já foi aplicada no projeto remoto e reconcilie o histórico antes de qualquer `db push`; não a reaplique às cegas.
+5. Depois de reconciliar o histórico, use `supabase db pull` para trazer o schema remoto e `supabase start` para abrir a instância local exigida pela extensão.
+6. No Copilot Chat, use `@supabase /migration <descreva a alteração>` para gerar uma migration. Revise e teste localmente. **Não aplique alterações no banco remoto sem confirmação explícita**; após aprovação, envie a migration pelo fluxo da CLI.
+
+As alterações de schema ficam versionadas em `supabase/migrations/`. A extensão não precisa da chave `anon` para editar o schema: a autenticação da CLI é independente das variáveis frontend em `.env`.
+
+### Comandos remotos úteis
+
+Estes comandos consultam ou alteram o projeto remoto vinculado. Revise consultas e arquivos SQL antes de executá-los.
+
+```sh
+# Ver migrações
+supabase migration list --remote
+
+# Rodar consulta SQL
+supabase db query --remote --yes "SELECT email, role FROM profiles;"
+
+# Executar arquivo SQL
+supabase db query --remote --yes --file caminho/arquivo.sql
+
+# Aplicar migrações novas
+supabase db push --remote
+```
+
 ## Google Cloud (OAuth / GIS)
 
 1. Acesse [Google Cloud Console](https://console.cloud.google.com/).

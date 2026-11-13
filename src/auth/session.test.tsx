@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RequireAuth } from '../components/RequireAuth'
 import type { GoogleSession } from '../types'
 import { AuthProvider } from './AuthContext'
@@ -12,6 +12,8 @@ import {
   saveSession,
   SESSION_STORAGE_KEY,
 } from './session'
+
+vi.mock('../services/supabase', () => ({ supabase: null }))
 
 const sample: GoogleSession = {
   googleId: 'gid-1',

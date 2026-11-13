@@ -5,7 +5,7 @@ const LINKS = [
   ['/admin/usuarios', 'Usuários'],
   ['/admin/assinaturas', 'Assinaturas'],
   ['/admin/pagamentos', 'Pagamentos'],
-  ['/admin/lembretes', 'Lembretes'],
+  ['/admin/lembretes', 'Cobrança e lembretes'],
   ['/admin/configuracoes', 'Configurações'],
 ] as const
 
