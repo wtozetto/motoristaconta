@@ -1,12 +1,7 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataContext'
 import { useTheme } from '../theme/ThemeContext'
-import {
-  CombustivelCharts,
-  DashboardCharts,
-  ManutencaoCharts,
-} from '../components/DashboardCharts'
 import { MetricCard } from '../components/MetricCard'
 import { PlatformFilterBar } from '../components/PlatformFilter'
 import { RegistroTable } from '../components/RegistroTable'
@@ -38,6 +33,26 @@ import type {
   RegistroInput,
 } from '../types'
 import { COMBUSTIVEL_LABEL } from '../types'
+
+const DashboardCharts = lazy(() =>
+  import('../components/DashboardCharts').then(({ DashboardCharts }) => ({
+    default: DashboardCharts,
+  })),
+)
+const CombustivelCharts = lazy(() =>
+  import('../components/DashboardCharts').then(({ CombustivelCharts }) => ({
+    default: CombustivelCharts,
+  })),
+)
+const ManutencaoCharts = lazy(() =>
+  import('../components/DashboardCharts').then(({ ManutencaoCharts }) => ({
+    default: ManutencaoCharts,
+  })),
+)
+
+function ChartsLoading() {
+  return <p className="p-6 text-center text-sm text-slate-500">Carregando gráficos...</p>
+}
 
 const PRESETS: PeriodPreset[] = [
   'diario',
@@ -627,7 +642,9 @@ export function DashboardPage() {
         </div>
 
         {/* Gráficos de combustível */}
-        <CombustivelCharts registros={currentRows} grouping={preset} />
+        <Suspense fallback={<ChartsLoading />}>
+          <CombustivelCharts registros={currentRows} grouping={preset} />
+        </Suspense>
       </section>
 
       {/* SEÇÃO 2: MANUTENÇÃO VEICULAR */}
@@ -649,7 +666,9 @@ export function DashboardPage() {
         </div>
 
         {currentManutencoes.length > 0 ? (
-          <ManutencaoCharts manutencoes={currentManutencoes} />
+          <Suspense fallback={<ChartsLoading />}>
+            <ManutencaoCharts manutencoes={currentManutencoes} />
+          </Suspense>
         ) : (
           <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
             Nenhuma manutenção registrada no período de {range.start} a {range.end}.
@@ -706,32 +725,34 @@ export function DashboardPage() {
             ))}
           </div>
         </div>
-        <DashboardCharts
-          registros={chartView === 'evolution' ? registros : currentRows}
-          filter={filter}
-          grouping={preset}
-          view={chartView}
-          monthlyComparison={{
-            current: {
-              ganhos: monthMetricsFiltered.totalGanhos,
-              combustivel: monthFuel,
-              manutencao: monthMaintenance,
-              lucro:
-                monthMetricsFiltered.totalGanhos -
-                monthMetricsFiltered.totalGastos -
-                monthMaintenance,
-            },
-            previous: {
-              ganhos: previousMonthMetrics.totalGanhos,
-              combustivel: previousMonthFuel,
-              manutencao: previousMonthMaintenance,
-              lucro:
-                previousMonthMetrics.totalGanhos -
-                previousMonthMetrics.totalGastos -
-                previousMonthMaintenance,
-            },
-          }}
-        />
+        <Suspense fallback={<ChartsLoading />}>
+          <DashboardCharts
+            registros={chartView === 'evolution' ? registros : currentRows}
+            filter={filter}
+            grouping={preset}
+            view={chartView}
+            monthlyComparison={{
+              current: {
+                ganhos: monthMetricsFiltered.totalGanhos,
+                combustivel: monthFuel,
+                manutencao: monthMaintenance,
+                lucro:
+                  monthMetricsFiltered.totalGanhos -
+                  monthMetricsFiltered.totalGastos -
+                  monthMaintenance,
+              },
+              previous: {
+                ganhos: previousMonthMetrics.totalGanhos,
+                combustivel: previousMonthFuel,
+                manutencao: previousMonthMaintenance,
+                lucro:
+                  previousMonthMetrics.totalGanhos -
+                  previousMonthMetrics.totalGastos -
+                  previousMonthMaintenance,
+              },
+            }}
+          />
+        </Suspense>
       </section>
 
       {editing ? (
