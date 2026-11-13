@@ -4,7 +4,7 @@ interface MetricCardProps {
   label: string
   value: number
   kind: 'money' | 'km' | 'percent'
-  tone?: 'profit' | 'expense' | 'neutral'
+  tone?: 'profit' | 'expense' | 'negative' | 'neutral'
   trend?: number | null
   hint?: string
 }
@@ -16,8 +16,10 @@ export function MetricCard({ label, value, kind, tone = 'neutral', trend, hint }
     tone === 'profit'
       ? 'text-dourado'
       : tone === 'expense'
-        ? 'text-verde'
-        : 'text-slate-900 dark:text-white'
+        ? 'text-gastos-escuro'
+        : tone === 'negative'
+          ? 'text-rose-600 dark:text-rose-400'
+          : 'text-slate-900 dark:text-white'
   const hasTrend = trend !== undefined
   const trendLabel =
     trend === null
@@ -37,7 +39,11 @@ export function MetricCard({ label, value, kind, tone = 'neutral', trend, hint }
 
   return (
     <article
-      className="card-hover-dourado rounded-2xl border border-amber-200/60 bg-white p-4 shadow-sm dark:border-amber-900/30 dark:bg-slate-900"
+      className={`rounded-2xl border bg-white p-4 shadow-sm dark:bg-slate-900 ${
+        tone === 'expense'
+          ? 'card-hover-gastos borda-gastos'
+          : 'card-hover-dourado border-amber-200/60 dark:border-amber-900/30'
+      }`}
       title={hint}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">

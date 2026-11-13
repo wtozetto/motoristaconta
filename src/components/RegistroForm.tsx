@@ -306,7 +306,7 @@ export function RegistroForm({ editing, onCancelEdit, onSubmit }: RegistroFormPr
                       Litros abastecidos <span className="text-xs font-normal text-slate-400">(opcional)</span>
                     </label>
                     {precoLitro ? (
-                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="text-xs font-semibold text-gastos-escuro">
                         {formatBRL(precoLitro)}/L
                       </span>
                     ) : null}
@@ -366,7 +366,7 @@ export function RegistroForm({ editing, onCancelEdit, onSubmit }: RegistroFormPr
         </div>
         <div>
           <dt className="text-xs text-slate-500">Gastos</dt>
-          <dd className="font-semibold tabular-nums text-rose-600">
+          <dd className="font-semibold tabular-nums text-gastos-escuro">
             {formatBRL(live.totalGastos)}
           </dd>
         </div>

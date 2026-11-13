@@ -61,7 +61,7 @@ export function RegistroTable({ registros, filter, onEdit, onDelete }: RegistroT
                   {formatBRL(d.totalGanhos)}
                 </td>
                 <td className="px-3 py-2 tabular-nums">
-                  <span className="text-verde font-medium">{formatBRL(d.totalGastos)}</span>
+                  <span className="text-gastos-escuro font-medium">{formatBRL(d.totalGastos)}</span>
                   {fuelSummary ? (
                     <span className="block text-[11px] font-normal text-slate-400">
                       {fuelSummary}

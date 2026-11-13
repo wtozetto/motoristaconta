@@ -30,7 +30,7 @@ const COLORS = {
   noventaenove: '#2563eb',
   indrive: '#f97316',
   ganhos: '#059669',
-  gastos: '#e11d48',
+  gastos: 'var(--gastos-escuro)',
   lucro: '#0f766e',
 }
 
@@ -229,7 +229,7 @@ export function DashboardCharts({
               type="monotone"
               dataKey="gastos"
               stroke={COLORS.gastos}
-              fill="#e11d4833"
+              fill="var(--gastos-bg)"
               name="Gastos"
             />
           </AreaChart>
@@ -419,7 +419,7 @@ export function ManutencaoCharts({ manutencoes }: ManutencaoChartsProps) {
             <XAxis dataKey="mes" />
             <YAxis />
             <Tooltip formatter={(v) => formatBRL(Number(v))} />
-            <Bar dataKey="valor" name="Manutenção" fill="#0284c7" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="valor" name="Manutenção" fill="var(--gastos-escuro)" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>

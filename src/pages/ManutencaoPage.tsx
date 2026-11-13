@@ -148,7 +148,7 @@ export function ManutencaoPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="card p-4">
           <span className="text-xs text-slate-500">Total investido</span>
-          <p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums dark:text-white">
+          <p className="mt-1 text-2xl font-bold text-gastos-escuro tabular-nums">
             {formatBRL(metrics.totalGasto)}
           </p>
           <span className="text-xs text-slate-400">{metrics.totalItens} serviço(s)</span>
@@ -353,7 +353,7 @@ export function ManutencaoPage() {
                         <span className="text-[11px] text-slate-400 block">Oficina: {m.oficina}</span>
                       ) : null}
                     </td>
-                    <td className="px-3 py-3 tabular-nums font-semibold text-slate-900 dark:text-white">
+                    <td className="px-3 py-3 tabular-nums font-semibold text-gastos-escuro">
                       {formatBRL(m.valor)}
                     </td>
                     <td className="px-3 py-3 text-xs">

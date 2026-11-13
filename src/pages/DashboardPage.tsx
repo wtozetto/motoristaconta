@@ -350,8 +350,8 @@ export function DashboardPage() {
           <div className="p-4">
           <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
             <div><p className="text-xs text-slate-500">Ganhos</p><p className="text-dourado font-bold">{formatBRL(monthMetrics.totalGanhos)}</p></div>
-            <div><p className="text-xs text-slate-500">Combustível</p><p className="text-verde font-bold">{formatBRL(monthFuel)}</p></div>
-            <div><p className="text-xs text-slate-500">Manutenção</p><p className="text-verde font-bold">{formatBRL(monthMaintenance)}</p></div>
+            <div><p className="text-xs text-slate-500">Combustível</p><p className="text-gastos-escuro font-bold">{formatBRL(monthFuel)}</p></div>
+            <div><p className="text-xs text-slate-500">Manutenção</p><p className="text-gastos-escuro font-bold">{formatBRL(monthMaintenance)}</p></div>
             <div><p className="text-xs text-slate-500">Km total</p><p className="font-bold">{formatKm(monthMetrics.km)}</p></div>
             <div className="col-span-2 border-t border-slate-100 pt-2 dark:border-slate-800">
               <p className="text-xs text-slate-500">Lucro (inclui todos os gastos)</p>
@@ -409,7 +409,7 @@ export function DashboardPage() {
           <div className="p-4">
           <div className="mt-3 grid grid-cols-2 gap-3">
             <div><p className="text-xs text-slate-500">Ganhos totais</p><p className="text-dourado text-lg font-bold">{formatBRL(yearMetrics.totalGanhos)}</p></div>
-            <div><p className="text-xs text-slate-500">Gastos totais</p><p className="text-verde text-lg font-bold">{formatBRL(yearMetrics.totalGastos + yearMaintenance)}</p></div>
+            <div><p className="text-xs text-slate-500">Gastos totais</p><p className="text-gastos-escuro text-lg font-bold">{formatBRL(yearMetrics.totalGastos + yearMaintenance)}</p></div>
             <div className="col-span-2"><p className="text-xs text-slate-500">Km total</p><p className="text-lg font-bold">{formatKm(yearMetrics.km)}</p></div>
           </div>
           </div>
@@ -516,7 +516,7 @@ export function DashboardPage() {
           label={includeMaintenance ? 'Lucro Real' : 'Lucro'}
           value={lucroExibido}
           kind="money"
-          tone={lucroExibido >= 0 ? 'profit' : 'expense'}
+          tone={lucroExibido >= 0 ? 'profit' : 'negative'}
           trend={trendDelta(lucroExibido, prevLucroExibido)}
         />
         <MetricCard
@@ -548,30 +548,30 @@ export function DashboardPage() {
           Composição detalhada dos gastos no período
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+          <div className="card-hover-gastos rounded-xl border borda-gastos bg-gastos-suave p-3">
             <span className="text-xs text-slate-500">Combustível total</span>
-            <p className="text-lg font-bold text-rose-600 tabular-nums">
+            <p className="text-lg font-bold text-gastos-escuro tabular-nums">
               {formatBRL(fuelMetrics.totalValor)}
             </p>
             <div className="mt-1 space-y-0.5 text-[11px] text-slate-500">
               {fuelMetrics.porTipo.etanol.valor > 0 ? (
-                <div>Etanol: {formatBRL(fuelMetrics.porTipo.etanol.valor)}</div>
+                <div className="text-gastos-escuro">Etanol: {formatBRL(fuelMetrics.porTipo.etanol.valor)}</div>
               ) : null}
               {fuelMetrics.porTipo.gasolina.valor > 0 ? (
-                <div>Gasolina: {formatBRL(fuelMetrics.porTipo.gasolina.valor)}</div>
+                <div className="text-gastos-escuro">Gasolina: {formatBRL(fuelMetrics.porTipo.gasolina.valor)}</div>
               ) : null}
               {fuelMetrics.porTipo.diesel.valor > 0 ? (
-                <div>Diesel: {formatBRL(fuelMetrics.porTipo.diesel.valor)}</div>
+                <div className="text-gastos-escuro">Diesel: {formatBRL(fuelMetrics.porTipo.diesel.valor)}</div>
               ) : null}
               {fuelMetrics.porTipo.nao_informado.valor > 0 ? (
-                <div>Não informado: {formatBRL(fuelMetrics.porTipo.nao_informado.valor)}</div>
+                <div className="text-gastos-escuro">Não informado: {formatBRL(fuelMetrics.porTipo.nao_informado.valor)}</div>
               ) : null}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+          <div className="card-hover-gastos rounded-xl border borda-gastos bg-gastos-suave p-3">
             <span className="text-xs text-slate-500">Outros gastos operacionais</span>
-            <p className="text-lg font-bold text-slate-700 tabular-nums dark:text-slate-200">
+            <p className="text-lg font-bold text-gastos-escuro tabular-nums">
               {formatBRL(outrosGastosTotal)}
             </p>
             <p className="mt-1 text-[11px] text-slate-500">
@@ -579,14 +579,14 @@ export function DashboardPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+          <div className="card-hover-gastos rounded-xl border borda-gastos bg-gastos-suave p-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-500">Manutenção veicular</span>
               <Link to="/manutencao" className="text-[11px] font-semibold text-emerald-600 hover:underline">
                 Gerenciar
               </Link>
             </div>
-            <p className="text-lg font-bold text-teal-600 tabular-nums">
+            <p className="text-lg font-bold text-gastos-escuro tabular-nums">
               {formatBRL(totalManutencao)}
             </p>
             <p className="mt-1 text-[11px] text-slate-500">
@@ -605,7 +605,7 @@ export function DashboardPage() {
               Análise de consumo por tipo, preços médios e eficiência por km rodado.
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          <span className="badge-gastos rounded-full px-3 py-1 text-xs font-semibold">
             Custo Combustível: {formatBRL(fuelMetrics.custoPorKm)}/km
           </span>
         </div>
@@ -617,7 +617,7 @@ export function DashboardPage() {
             return (
               <div
                 key={tipo}
-                className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-800 dark:bg-slate-950/50"
+                className="card-hover-gastos rounded-2xl border borda-gastos bg-gastos-suave p-3.5"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold">{COMBUSTIVEL_LABEL[tipo]}</span>
@@ -625,13 +625,13 @@ export function DashboardPage() {
                     {data.litros > 0 ? `${data.litros.toFixed(1)} L` : '—'}
                   </span>
                 </div>
-                <div className="mt-2 text-xl font-bold text-slate-900 tabular-nums dark:text-white">
+                <div className="mt-2 text-xl font-bold text-gastos-escuro tabular-nums">
                   {formatBRL(data.valor)}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-200 pt-2 text-xs dark:border-slate-800">
                   <div>
                     <span className="text-slate-400 block">Preço médio</span>
-                    <span className="font-semibold tabular-nums">
+                    <span className="font-semibold tabular-nums text-gastos-escuro">
                       {data.precoMedio > 0 ? `${formatBRL(data.precoMedio)}/L` : '—'}
                     </span>
                   </div>
@@ -831,7 +831,9 @@ export function DashboardPage() {
                   <p className="truncate font-semibold">{reminder.titulo}</p>
                   <p className="text-xs text-slate-500">
                     {formatDateISO(reminder.dataVencimento)}
-                    {reminder.valor !== undefined ? ` · ${formatBRL(reminder.valor)}` : ''}
+                    {reminder.valor !== undefined ? (
+                      <> · <span className="font-semibold text-gastos-escuro">{formatBRL(reminder.valor)}</span></>
+                    ) : ''}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-semibold">{reminder.mensagem}</span>

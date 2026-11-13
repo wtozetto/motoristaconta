@@ -238,7 +238,9 @@ export function LembretesPage() {
                     <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs dark:bg-slate-900/70">{tipo}</span>
                   </div>
                   <p className="mt-1 text-sm">
-                    {formatDateISO(conta.dataVencimento)} · {formatBRL(conta.valor)} · {due.mensagem}
+                    {formatDateISO(conta.dataVencimento)} ·{' '}
+                    <span className="font-semibold text-gastos-escuro">{formatBRL(conta.valor)}</span>
+                    {' · '}{due.mensagem}
                   </p>
                   {conta.observacao ? <p className="mt-1 text-xs opacity-80">{conta.observacao}</p> : null}
                 </div>

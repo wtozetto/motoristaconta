@@ -10,30 +10,37 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[#FAF8F0] px-4 dark:bg-[#0F1A14]">
-      <main className="card w-full max-w-md rounded-3xl p-8">
-        <div className="flex items-center gap-3">
-          <img src="/icon-192.png" alt="" className="h-12 w-12 object-contain" />
-          <div>
-            <p             className="text-sm font-semibold uppercase tracking-wide text-verde">
-              ContaRota
-            </p>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-verde">MotoristaConta</h1>
-          </div>
+    <div className="login-page flex min-h-dvh items-center justify-center px-4 py-8">
+      <main className="login-card w-full max-w-md rounded-2xl p-6 sm:p-8">
+        <div className="mb-6 text-center">
+          <img
+            src="/icon-192.png"
+            alt=""
+            className="login-logo mx-auto mb-3 h-16 w-16 object-contain"
+          />
+          <h1 className="text-2xl font-bold tracking-tight text-[#0C5C38]">MotoristaConta</h1>
+          <p className="mt-1 text-sm text-[#5F7468]">
+            Controle de gastos, ganhos e rotas para motoristas.
+          </p>
         </div>
-        <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Controle ganhos, km e lucro dos apps Uber, 99 e Indrive. Os lançamentos ficam neste
-          aparelho e um backup automático vai para o seu Google Drive.
-        </p>
-        <ul className="mt-5 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-          <li>Lançamentos diários com totais ao vivo</li>
-          <li>Dashboard por período e aplicativo</li>
-          <li>Backup automático no Google Drive da sua conta</li>
+        <ul className="mb-6 space-y-2 text-sm text-[#5F7468]">
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 text-[#806000]" aria-hidden="true">•</span>
+            <span>Controle de gastos, ganhos e rotas em tempo real.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 text-[#806000]" aria-hidden="true">•</span>
+            <span>Login seguro com Google.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-0.5 text-[#806000]" aria-hidden="true">•</span>
+            <span>Backup automático dos seus dados.</span>
+          </li>
         </ul>
-        <div className="mt-8">
+        <div>
           <GoogleSignIn />
         </div>
-        <p className="mt-6 text-xs text-slate-500">
+        <p className="mt-6 text-xs leading-5 text-[#5F7468]">
           O login pede acesso ao Drive só para arquivos criados por este app
           (MotoristaConta-dados.json e MotoristaConta-acessos.json).
         </p>

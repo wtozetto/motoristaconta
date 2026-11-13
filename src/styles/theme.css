@@ -9,6 +9,11 @@
   --dourado-bg: rgba(212, 175, 55, 0.08);
   --dourado-borda: rgba(212, 175, 55, 0.35);
   --sombra-dourada: 0 2px 12px rgba(212, 175, 55, 0.12);
+  --gastos: #F59E0B;
+  --gastos-claro: #FFB020;
+  --gastos-escuro: #B45309;
+  --gastos-bg: rgba(245, 158, 11, 0.12);
+  --gastos-borda: rgba(245, 158, 11, 0.35);
   --borda-dourada: 1px solid var(--dourado-borda);
   --borda-dourada-clara: 1px solid rgba(212, 175, 55, 0.18);
   --color-primary: var(--verde-principal);
@@ -43,6 +48,10 @@
   --fundo-pagina: #0F1A14;
   --texto-principal: #E8EDE9;
   --dourado-bg: rgba(212, 175, 55, 0.06);
+  --gastos: #FFB020;
+  --gastos-claro: #FFD54F;
+  --gastos-escuro: #F59E0B;
+  --gastos-bg: rgba(245, 158, 11, 0.08);
   --color-primary-dark: #0C5C38;
   --color-bg: var(--fundo-pagina);
   --color-card: #1A2E22;
@@ -140,8 +149,13 @@
 
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
   border-color: var(--dourado);
+}
+
+.btn-primary:focus-visible {
+  outline: 3px solid rgba(212, 175, 55, 0.6);
+  outline-offset: 2px;
 }
 
 .btn-secondary {
@@ -189,12 +203,62 @@
   color: var(--verde-principal);
 }
 
+.text-gastos {
+  color: var(--gastos);
+}
+
+.text-gastos-escuro {
+  color: var(--gastos-escuro);
+}
+
+.dark .text-gastos-escuro,
+.dark .badge-gastos {
+  color: var(--gastos);
+}
+
 .dark .text-verde {
   color: #65C990;
 }
 
+.bg-gastos-suave {
+  background: var(--gastos-bg);
+}
+
+.borda-gastos {
+  border-color: var(--gastos-borda);
+}
+
+.badge-gastos {
+  background: var(--gastos-bg);
+  color: var(--gastos-escuro);
+  border: 1px solid var(--gastos-borda);
+}
+
 .bg-dourado-suave {
   background: var(--dourado-bg);
+}
+
+.card-hover-gastos {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover-gastos:hover {
+  border-color: var(--gastos);
+  box-shadow: 0 0 12px var(--gastos-bg);
+}
+
+.login-page {
+  background: linear-gradient(135deg, #0A3A26 0%, #0C5C38 50%, #148552 100%);
+}
+
+.login-card {
+  background: rgba(250, 248, 240, 0.98);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), 0 0 18px rgba(212, 175, 55, 0.12);
+}
+
+.login-logo {
+  filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.45));
 }
 
 .hover-dourado:hover {
@@ -270,7 +334,8 @@ textarea:focus {
 
 @media (prefers-reduced-motion: reduce) {
   .btn-primary,
-  .btn-secondary {
+  .btn-secondary,
+  .card-hover-gastos {
     transition: none;
   }
 
