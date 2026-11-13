@@ -4,47 +4,50 @@ import { useAuth } from '../auth/AuthContext'
 import { isAuthenticated } from '../auth/session'
 import { GoogleSignIn } from '../components/GoogleSignIn'
 
-const USER_COUNT_KEY = 'mc_userCount'
-const LAST_UPDATED_KEY = 'mc_countLastUpdated'
-const INITIAL_COUNT = 1247
-const COUNT_INTERVAL = 30 * 60 * 1000
-
-function getUserCountState(now = Date.now()) {
-  const storedCount = Number.parseInt(localStorage.getItem(USER_COUNT_KEY) ?? '', 10)
-  const storedTimestamp = Number.parseInt(localStorage.getItem(LAST_UPDATED_KEY) ?? '', 10)
-  const count = Number.isFinite(storedCount) && storedCount >= 0 ? storedCount : INITIAL_COUNT
-  const lastUpdated = Number.isFinite(storedTimestamp) && storedTimestamp > 0
-    ? storedTimestamp
-    : now
-  const increments = Math.floor(Math.max(0, now - lastUpdated) / COUNT_INTERVAL)
-
-  return {
-    count: count + increments,
-    lastUpdated: lastUpdated + increments * COUNT_INTERVAL,
-    increments,
-  }
-}
+const COUNT_INTERVAL = 5 * 60 * 1000
 
 export function LoginPage() {
   const { session } = useAuth()
-  const [userCount, setUserCount] = useState(() => getUserCountState().count)
+  const [userCount, setUserCount] = useState<number | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const initialState = getUserCountState()
-    localStorage.setItem(USER_COUNT_KEY, String(initialState.count))
-    localStorage.setItem(LAST_UPDATED_KEY, String(initialState.lastUpdated))
+    let active = true
 
-    const timer = window.setInterval(() => {
-      const updatedState = getUserCountState()
+    const fetchCount = async () => {
+      try {
+        const response = await fetch('/api/get-user-count')
+        if (!response.ok) throw new Error(`Counter request failed: ${response.status}`)
 
-      if (updatedState.increments > 0) {
-        localStorage.setItem(USER_COUNT_KEY, String(updatedState.count))
-        localStorage.setItem(LAST_UPDATED_KEY, String(updatedState.lastUpdated))
-        setUserCount(updatedState.count)
+        const data: unknown = await response.json()
+        if (
+          typeof data !== 'object'
+          || data === null
+          || !('success' in data)
+          || data.success !== true
+          || !('total' in data)
+          || typeof data.total !== 'number'
+          || !Number.isSafeInteger(data.total)
+          || data.total < 0
+        ) {
+          throw new Error('Invalid counter response')
+        }
+
+        if (active) setUserCount(data.total)
+      } catch (error) {
+        console.error('Falha ao buscar contador de usuários:', error)
+      } finally {
+        if (active) setLoading(false)
       }
-    }, COUNT_INTERVAL)
+    }
 
-    return () => window.clearInterval(timer)
+    void fetchCount()
+    const timer = window.setInterval(() => void fetchCount(), COUNT_INTERVAL)
+
+    return () => {
+      active = false
+      window.clearInterval(timer)
+    }
   }, [])
 
   if (isAuthenticated(session)) {
@@ -82,14 +85,21 @@ export function LoginPage() {
         <div>
           <GoogleSignIn />
         </div>
-        <div className="mt-6 border-t border-[rgba(212,175,55,0.15)] pt-4 text-center">
-          <p className="text-sm text-[#5F7468]">
-            Juntos com outros{' '}
-            <span className="font-semibold text-[#D4AF37]">
-              {userCount.toLocaleString('pt-BR')}
-            </span>{' '}
-            motoristas
-          </p>
+        <div
+          className="mt-6 min-h-[2rem] border-t border-[rgba(212,175,55,0.15)] pt-4 text-center"
+          aria-live="polite"
+        >
+          {!loading && userCount !== null ? (
+            <p className="text-sm text-[#5F7468]">
+              Já com outros{' '}
+              <span className="font-semibold text-[#D4AF37]">
+                {userCount.toLocaleString('pt-BR')}
+              </span>{' '}
+              motoristas cadastrados
+            </p>
+          ) : loading ? (
+            <span className="text-sm text-[#5F7468]/60">Carregando...</span>
+          ) : null}
         </div>
         <p className="mt-6 text-xs leading-5 text-[#5F7468]">
           O login pede acesso ao Drive só para arquivos criados por este app
