@@ -20,13 +20,6 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-function resolveTheme(pref: ThemePreference): 'light' | 'dark' {
-  if (pref === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  }
-  return pref
-}
-
 function applyDomTheme(theme: 'light' | 'dark'): void {
   document.documentElement.classList.toggle('dark', theme === 'dark')
   document.documentElement.style.colorScheme = theme
@@ -34,19 +27,23 @@ function applyDomTheme(theme: 'light' | 'dark'): void {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<AppSettings>(() => loadSettings())
-  const resolvedTheme = resolveTheme(settings.theme)
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() =>
+    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+  )
+  const resolvedTheme = settings.theme === 'system' ? systemTheme : settings.theme
 
   useEffect(() => {
     applyDomTheme(resolvedTheme)
   }, [resolvedTheme])
 
   useEffect(() => {
-    if (settings.theme !== 'system') return
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyDomTheme(resolveTheme('system'))
+    const onChange = (event: MediaQueryListEvent) => {
+      setSystemTheme(event.matches ? 'dark' : 'light')
+    }
     mq.addEventListener('change', onChange)
     return () => mq.removeEventListener('change', onChange)
-  }, [settings.theme])
+  }, [])
 
   const persist = useCallback((next: AppSettings) => {
     setSettings(next)
