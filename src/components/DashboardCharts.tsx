@@ -7,6 +7,7 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  LabelList,
   Line,
   LineChart,
   Pie,
@@ -38,6 +39,10 @@ interface DashboardChartsProps {
   filter: PlatformFilter
   grouping: PeriodPreset
   view?: 'summary' | 'evolution' | 'comparison'
+  monthlyComparison?: {
+    current: { ganhos: number; combustivel: number; manutencao: number; lucro: number }
+    previous: { ganhos: number; combustivel: number; manutencao: number; lucro: number }
+  }
 }
 
 export function DashboardCharts({
@@ -45,6 +50,7 @@ export function DashboardCharts({
   filter,
   grouping,
   view = 'summary',
+  monthlyComparison,
 }: DashboardChartsProps) {
   const agg = aggregateRegistros(registros, filter)
   // Com filtro de app ativo, os gráficos de participação mostram apenas o
@@ -109,6 +115,53 @@ export function DashboardCharts({
             <Line type="monotone" dataKey="ganhos" stroke={COLORS.ganhos} name="Ganhos" dot={false} />
             <Line type="monotone" dataKey="gastos" stroke={COLORS.gastos} name="Gastos" dot={false} />
           </LineChart>
+        </ResponsiveContainer>
+      </ChartCard>
+    )
+  }
+
+  if (view === 'comparison' && monthlyComparison) {
+    const categories = [
+      ['ganhos', 'Ganhos'],
+      ['combustivel', 'Combustível'],
+      ['manutencao', 'Manutenção'],
+      ['lucro', 'Lucro'],
+    ] as const
+    const comparisonData = categories.map(([key, name]) => ({
+      name,
+      atual: monthlyComparison.current[key],
+      anterior: monthlyComparison.previous[key],
+      variation:
+        monthlyComparison.previous[key] === 0
+          ? monthlyComparison.current[key] === 0
+            ? '0%'
+            : 'Novo'
+          : `${monthlyComparison.current[key] >= monthlyComparison.previous[key] ? '+' : ''}${(
+              ((monthlyComparison.current[key] - monthlyComparison.previous[key]) /
+                Math.abs(monthlyComparison.previous[key])) *
+              100
+            ).toFixed(1)}%`,
+    }))
+
+    return (
+      <ChartCard title="Comparativo mensal — mês atual e período equivalente anterior">
+        <ResponsiveContainer width="100%" height={340}>
+          <BarChart data={comparisonData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip formatter={(value) => formatBRL(Number(value))} />
+            <Legend />
+            <Bar dataKey="atual" name="Mês atual" fill={COLORS.ganhos} radius={[4, 4, 0, 0]}>
+              <LabelList
+                dataKey="variation"
+                position="top"
+                formatter={(value) => String(value)}
+                className="fill-slate-600 text-[11px] dark:fill-slate-300"
+              />
+            </Bar>
+            <Bar dataKey="anterior" name="Mês anterior" fill="#64748b" radius={[4, 4, 0, 0]} />
+          </BarChart>
         </ResponsiveContainer>
       </ChartCard>
     )

@@ -75,6 +75,7 @@ export function DashboardPage() {
   const today = todayISO()
   const periodDate = useMemo(() => parseISODate(today), [today])
   const monthRange = useMemo(() => getPeriodRange('mensal', periodDate), [periodDate])
+  const previousMonthRange = useMemo(() => previousRange(monthRange), [monthRange])
   const yearRange = useMemo(() => getPeriodRange('anual', periodDate), [periodDate])
   const todayMetrics = useMemo(
     () => aggregateRegistros(filterByRange(registros, { start: today, end: today })),
@@ -83,6 +84,18 @@ export function DashboardPage() {
   const monthRows = useMemo(() => filterByRange(registros, monthRange), [registros, monthRange])
   const yearRows = useMemo(() => filterByRange(registros, yearRange), [registros, yearRange])
   const monthMetrics = useMemo(() => aggregateRegistros(monthRows), [monthRows])
+  const monthMetricsFiltered = useMemo(
+    () => aggregateRegistros(monthRows, filter),
+    [monthRows, filter],
+  )
+  const previousMonthRows = useMemo(
+    () => filterByRange(registros, previousMonthRange),
+    [registros, previousMonthRange],
+  )
+  const previousMonthMetrics = useMemo(
+    () => aggregateRegistros(previousMonthRows, filter),
+    [previousMonthRows, filter],
+  )
   const yearMetrics = useMemo(() => aggregateRegistros(yearRows), [yearRows])
   const monthFuel = useMemo(
     () => monthRows.reduce((total, registro) => total + getCombustivelValor(registro.combustivel), 0),
@@ -94,6 +107,26 @@ export function DashboardPage() {
         .filter((item) => item.status === 'concluido' && item.data >= monthRange.start && item.data <= monthRange.end)
         .reduce((total, item) => total + item.valor, 0),
     [manutencoes, monthRange],
+  )
+  const previousMonthFuel = useMemo(
+    () =>
+      previousMonthRows.reduce(
+        (total, registro) => total + getCombustivelValor(registro.combustivel),
+        0,
+      ),
+    [previousMonthRows],
+  )
+  const previousMonthMaintenance = useMemo(
+    () =>
+      manutencoes
+        .filter(
+          (item) =>
+            item.status === 'concluido' &&
+            item.data >= previousMonthRange.start &&
+            item.data <= previousMonthRange.end,
+        )
+        .reduce((total, item) => total + item.valor, 0),
+    [manutencoes, previousMonthRange],
   )
   const yearMaintenance = useMemo(
     () =>
@@ -612,6 +645,26 @@ export function DashboardPage() {
           filter={filter}
           grouping={preset}
           view={chartView}
+          monthlyComparison={{
+            current: {
+              ganhos: monthMetricsFiltered.totalGanhos,
+              combustivel: monthFuel,
+              manutencao: monthMaintenance,
+              lucro:
+                monthMetricsFiltered.totalGanhos -
+                monthMetricsFiltered.totalGastos -
+                monthMaintenance,
+            },
+            previous: {
+              ganhos: previousMonthMetrics.totalGanhos,
+              combustivel: previousMonthFuel,
+              manutencao: previousMonthMaintenance,
+              lucro:
+                previousMonthMetrics.totalGanhos -
+                previousMonthMetrics.totalGastos -
+                previousMonthMaintenance,
+            },
+          }}
         />
       </section>
 
