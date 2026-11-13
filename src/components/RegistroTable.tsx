@@ -21,7 +21,7 @@ export function RegistroTable({ registros, filter, onEdit, onDelete }: RegistroT
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+    <div className="card-hover-dourado overflow-x-auto rounded-2xl border border-amber-200/60 bg-white dark:border-amber-900/30 dark:bg-slate-900">
       <table className="min-w-full text-left text-sm">
         <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900">
           <tr>
@@ -57,11 +57,11 @@ export function RegistroTable({ registros, filter, onEdit, onDelete }: RegistroT
               <tr key={r.id} className="border-t border-slate-100 dark:border-slate-800">
                 <td className="px-3 py-2 font-medium">{formatDateISO(r.data)}</td>
                 <td className="px-3 py-2 tabular-nums">{formatKm(d.km)}</td>
-                <td className="px-3 py-2 tabular-nums text-emerald-600 font-medium">
+                <td className="px-3 py-2 tabular-nums text-dourado font-medium">
                   {formatBRL(d.totalGanhos)}
                 </td>
                 <td className="px-3 py-2 tabular-nums">
-                  <span className="text-rose-600 font-medium">{formatBRL(d.totalGastos)}</span>
+                  <span className="text-verde font-medium">{formatBRL(d.totalGastos)}</span>
                   {fuelSummary ? (
                     <span className="block text-[11px] font-normal text-slate-400">
                       {fuelSummary}

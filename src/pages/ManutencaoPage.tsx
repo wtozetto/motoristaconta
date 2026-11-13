@@ -137,7 +137,7 @@ export function ManutencaoPage() {
               setEditing(null)
               setIsFormOpen(true)
             }}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500"
+            className="btn-primary rounded-xl px-4 py-2 text-sm font-semibold"
           >
             + Nova manutenção
           </button>
@@ -146,7 +146,7 @@ export function ManutencaoPage() {
 
       {/* Cards de Métricas e Alertas */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="card p-4">
           <span className="text-xs text-slate-500">Total investido</span>
           <p className="mt-1 text-2xl font-bold text-slate-900 tabular-nums dark:text-white">
             {formatBRL(metrics.totalGasto)}
@@ -154,7 +154,7 @@ export function ManutencaoPage() {
           <span className="text-xs text-slate-400">{metrics.totalItens} serviço(s)</span>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="card p-4">
           <span className="text-xs text-slate-500">Atrasadas</span>
           <p
             className={`mt-1 text-2xl font-bold tabular-nums ${
@@ -166,7 +166,7 @@ export function ManutencaoPage() {
           <span className="text-xs text-slate-400">Requerem troca imediata</span>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="card p-4">
           <span className="text-xs text-slate-500">Próximas (atenção)</span>
           <p
             className={`mt-1 text-2xl font-bold tabular-nums ${
@@ -180,7 +180,7 @@ export function ManutencaoPage() {
           </span>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <div className="card p-4">
           <span className="text-xs text-slate-500">KM do veículo</span>
           <p className="mt-1 text-2xl font-bold text-emerald-600 tabular-nums dark:text-emerald-400">
             {formatKm(kmAtual)}
@@ -751,7 +751,7 @@ function ManutencaoForm({ editing, kmAtual, customCategories, onCancel, onSubmit
         <button
           type="submit"
           disabled={saving}
-          className="h-11 rounded-xl bg-emerald-600 px-6 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+          className="btn-primary h-11 rounded-xl px-6 text-sm font-semibold disabled:opacity-60"
         >
           {saving ? 'Salvando…' : editing ? 'Atualizar manutenção' : 'Salvar manutenção'}
         </button>

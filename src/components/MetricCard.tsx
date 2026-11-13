@@ -14,9 +14,9 @@ export function MetricCard({ label, value, kind, tone = 'neutral', trend, hint }
     kind === 'money' ? formatBRL(value) : kind === 'km' ? formatKm(value) : formatPercent(value)
   const toneClass =
     tone === 'profit'
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-dourado'
       : tone === 'expense'
-        ? 'text-rose-600 dark:text-rose-400'
+        ? 'text-verde'
         : 'text-slate-900 dark:text-white'
   const hasTrend = trend !== undefined
   const trendLabel =
@@ -32,12 +32,12 @@ export function MetricCard({ label, value, kind, tone = 'neutral', trend, hint }
     trend === null || trend === 0
       ? 'text-slate-500'
       : (trend ?? 0) > 0
-        ? 'text-emerald-600 dark:text-emerald-400'
+        ? 'text-verde'
         : 'text-rose-600 dark:text-rose-400'
 
   return (
     <article
-      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+      className="card-hover-dourado rounded-2xl border border-amber-200/60 bg-white p-4 shadow-sm dark:border-amber-900/30 dark:bg-slate-900"
       title={hint}
     >
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">

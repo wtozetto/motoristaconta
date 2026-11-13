@@ -335,20 +335,23 @@ export function DashboardPage() {
       </header>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="font-semibold">Hoje</h2>
+        <article className="card overflow-hidden">
+          <h2 className="card-header px-4 py-2 font-semibold">Hoje</h2>
+          <div className="p-4">
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div><p className="text-xs text-slate-500">Ganhos</p><p className="text-lg font-bold">{formatBRL(todayMetrics.totalGanhos)}</p></div>
+            <div><p className="text-xs text-slate-500">Ganhos</p><p className="text-dourado text-lg font-bold">{formatBRL(todayMetrics.totalGanhos)}</p></div>
             <div><p className="text-xs text-slate-500">Km percorridos</p><p className="text-lg font-bold">{formatKm(todayMetrics.km)}</p></div>
+          </div>
           </div>
         </article>
 
-        <article className="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-900 dark:bg-slate-900">
-          <h2 className="font-semibold">Este mês</h2>
+        <article className="card overflow-hidden">
+          <h2 className="card-header px-4 py-2 font-semibold">Este mês</h2>
+          <div className="p-4">
           <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-            <div><p className="text-xs text-slate-500">Ganhos</p><p className="font-bold">{formatBRL(monthMetrics.totalGanhos)}</p></div>
-            <div><p className="text-xs text-slate-500">Combustível</p><p className="font-bold">{formatBRL(monthFuel)}</p></div>
-            <div><p className="text-xs text-slate-500">Manutenção</p><p className="font-bold">{formatBRL(monthMaintenance)}</p></div>
+            <div><p className="text-xs text-slate-500">Ganhos</p><p className="text-dourado font-bold">{formatBRL(monthMetrics.totalGanhos)}</p></div>
+            <div><p className="text-xs text-slate-500">Combustível</p><p className="text-verde font-bold">{formatBRL(monthFuel)}</p></div>
+            <div><p className="text-xs text-slate-500">Manutenção</p><p className="text-verde font-bold">{formatBRL(monthMaintenance)}</p></div>
             <div><p className="text-xs text-slate-500">Km total</p><p className="font-bold">{formatKm(monthMetrics.km)}</p></div>
             <div className="col-span-2 border-t border-slate-100 pt-2 dark:border-slate-800">
               <p className="text-xs text-slate-500">Lucro (inclui todos os gastos)</p>
@@ -382,7 +385,7 @@ export function DashboardPage() {
                   aria-valuemax={100}
                   aria-valuenow={Math.min(100, Math.round(goalProgress * 100))}
                 >
-                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Math.max(0, goalProgress * 100))}%` }} />
+                  <div className="progress-bar h-full" style={{ width: `${Math.min(100, Math.max(0, goalProgress * 100))}%` }} />
                 </div>
                 <div className="mt-2 flex justify-between gap-2 text-xs text-slate-500">
                   <span>{formatPercent(goalProgress)} concluído · faltam {formatBRL(projection.remaining)}</span>
@@ -398,14 +401,17 @@ export function DashboardPage() {
               </>
             ) : null}
           </div>
+          </div>
         </article>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-          <h2 className="font-semibold">Este ano</h2>
+        <article className="card overflow-hidden">
+          <h2 className="card-header px-4 py-2 font-semibold">Este ano</h2>
+          <div className="p-4">
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <div><p className="text-xs text-slate-500">Ganhos totais</p><p className="text-lg font-bold">{formatBRL(yearMetrics.totalGanhos)}</p></div>
-            <div><p className="text-xs text-slate-500">Gastos totais</p><p className="text-lg font-bold">{formatBRL(yearMetrics.totalGastos + yearMaintenance)}</p></div>
+            <div><p className="text-xs text-slate-500">Ganhos totais</p><p className="text-dourado text-lg font-bold">{formatBRL(yearMetrics.totalGanhos)}</p></div>
+            <div><p className="text-xs text-slate-500">Gastos totais</p><p className="text-verde text-lg font-bold">{formatBRL(yearMetrics.totalGastos + yearMaintenance)}</p></div>
             <div className="col-span-2"><p className="text-xs text-slate-500">Km total</p><p className="text-lg font-bold">{formatKm(yearMetrics.km)}</p></div>
+          </div>
           </div>
         </article>
       </section>

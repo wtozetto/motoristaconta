@@ -27,7 +27,7 @@ export function GoogleSignIn() {
           type="button"
           onClick={() => void onGoogle()}
           disabled={busy}
-          className="flex h-12 w-full max-w-xs items-center justify-center gap-3 rounded-xl bg-slate-900 text-sm font-semibold text-white disabled:opacity-60 dark:bg-white dark:text-slate-900"
+          className="btn-primary flex h-12 w-full max-w-xs items-center justify-center gap-3 rounded-xl text-sm font-semibold disabled:opacity-60"
         >
           {busy ? 'Conectando…' : 'Entrar com Google'}
         </button>

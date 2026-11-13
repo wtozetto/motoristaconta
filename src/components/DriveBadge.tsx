@@ -8,11 +8,11 @@ export function DriveBadge() {
   const isRemoteUpdate = status === 'ok' && Boolean(message?.includes('versão mais recente do Google Drive'))
 
   const badge = isSyncing
-    ? { icon: '🔄', label: 'Sincronizando', color: 'text-blue-600 dark:text-blue-400' }
+    ? { icon: '🔄', label: 'Sincronizando', color: 'text-dourado glow-dourado' }
     : status === 'error'
       ? { icon: '⚠️', label: 'Falha na sincronização', color: 'text-rose-600 dark:text-rose-400' }
       : isMerged
-        ? { icon: '🔄', label: 'Dados mesclados', color: 'text-amber-600 dark:text-amber-400' }
+        ? { icon: '🔄', label: 'Dados mesclados', color: 'text-dourado' }
         : isLocalUpdate
           ? { icon: '⬆️', label: 'Atualizado localmente', color: 'text-blue-600 dark:text-blue-400' }
           : isRemoteUpdate
@@ -20,8 +20,8 @@ export function DriveBadge() {
             : status === 'dev'
               ? { icon: '✅', label: 'Modo de teste', color: 'text-slate-500' }
               : status === 'offline'
-                ? { icon: '☁️', label: 'Sem conexão', color: 'text-amber-600 dark:text-amber-400' }
-                : { icon: '✓', label: 'Sincronizado', color: 'text-emerald-600 dark:text-emerald-400' }
+                ? { icon: '☁️', label: 'Sem conexão', color: 'text-dourado' }
+                : { icon: '✓', label: 'Sincronizado', color: 'text-verde' }
 
   return (
     <div className="space-y-1">
@@ -38,9 +38,9 @@ export function DriveBadge() {
           role="progressbar"
           aria-label="Sincronização em andamento"
           aria-valuetext="Em andamento"
-          className="h-1 overflow-hidden rounded-full bg-blue-100 dark:bg-blue-950"
+          className="h-1 overflow-hidden rounded-full bg-dourado-suave"
         >
-          <div className="h-full w-2/5 animate-pulse rounded-full bg-blue-600 dark:bg-blue-400" />
+          <div className="progress-bar h-full w-2/5 animate-pulse" />
         </div>
       ) : null}
     </div>

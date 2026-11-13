@@ -137,7 +137,7 @@ export function RegistroForm({ editing, onCancelEdit, onSubmit }: RegistroFormPr
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+      className="card space-y-4 p-4"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold">
@@ -397,7 +397,7 @@ export function RegistroForm({ editing, onCancelEdit, onSubmit }: RegistroFormPr
       <button
         type="submit"
         disabled={saving}
-        className="h-11 w-full rounded-xl bg-emerald-600 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+        className="btn-primary h-11 w-full rounded-xl text-sm font-semibold disabled:opacity-60"
       >
         {saving ? 'Salvando…' : editing ? 'Atualizar lançamento' : 'Salvar lançamento'}
       </button>

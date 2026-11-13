@@ -29,10 +29,10 @@ const EMPTY_FORM: ContaFixaInput = {
 }
 
 const urgencyStyle: Record<string, string> = {
-  vencido: 'border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200',
-  vence_hoje: 'border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200',
-  proximo: 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200',
-  ok: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200',
+  vencido: 'border-l-4 border-rose-300 border-l-rose-500 bg-rose-50 text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-200',
+  vence_hoje: 'border-l-4 border-amber-300 border-l-amber-600 bg-amber-50 text-amber-900 shadow-[0_0_12px_rgba(212,175,55,0.2)] dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100',
+  proximo: 'border-l-4 border-amber-300 border-l-amber-500 bg-amber-50/70 text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100',
+  ok: 'border-l-4 border-emerald-200 border-l-emerald-700 bg-emerald-50 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200',
 }
 
 export function LembretesPage() {
@@ -147,7 +147,7 @@ export function LembretesPage() {
 
       <form
         onSubmit={handleSubmit}
-        className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+        className="card space-y-4 p-4"
       >
         <h2 className="font-semibold">Novo vencimento</h2>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -207,7 +207,7 @@ export function LembretesPage() {
         <button
           type="submit"
           disabled={saving}
-          className="h-11 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
+          className="btn-primary h-11 rounded-xl px-4 text-sm font-semibold disabled:opacity-60"
         >
           {saving ? 'Salvando…' : 'Adicionar vencimento'}
         </button>

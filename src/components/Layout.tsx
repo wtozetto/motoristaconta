@@ -26,8 +26,8 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
           className={({ isActive }) =>
             `flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 text-xs font-semibold sm:flex-none sm:flex-row sm:gap-2 sm:text-sm ${
               isActive
-                ? 'bg-emerald-600 text-white'
-                : 'text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
+                  ? 'app-nav-active'
+                  : 'app-nav-idle'
             }`
           }
         >
@@ -47,7 +47,7 @@ export function Layout() {
 
   if (isInitialSyncing) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-slate-50 p-6 text-center dark:bg-slate-950">
+      <div className="app-shell flex min-h-dvh flex-col items-center justify-center gap-3 p-6 text-center">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
         <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
           Sincronizando com o Google Drive…
@@ -60,13 +60,13 @@ export function Layout() {
   }
 
   return (
-    <div className="min-h-dvh bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-slate-200 lg:bg-white lg:p-5 dark:lg:border-slate-800 dark:lg:bg-slate-900">
-        <div className="flex items-center gap-3">
+    <div className="app-shell min-h-dvh">
+      <aside className="app-sidebar hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col lg:border-r lg:p-5">
+        <div className="flex items-center gap-3 border-b border-amber-400/30 pb-5">
           <img src="/icon-192.png" alt="" className="h-10 w-10 object-contain" />
           <div>
             <p className="text-lg font-bold tracking-tight">MotoristaConta</p>
-            <p className="text-xs text-slate-500">ContaRota</p>
+            <p className="sidebar-subtle text-xs">ContaRota</p>
           </div>
         </div>
         <nav className="mt-8 flex flex-col gap-2" aria-label="Principal">
@@ -74,18 +74,18 @@ export function Layout() {
         </nav>
         <NavLink
           to="/atalhos"
-          className="mt-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          className="app-nav-idle mt-3 rounded-xl px-3 py-2 text-sm font-medium"
         >
           Ajuda e atalhos
         </NavLink>
-        <div className="mt-auto space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+        <div className="sidebar-separator mt-auto space-y-3 border-t pt-4">
           <p className="text-sm font-medium">{session?.name}</p>
-          <p className="truncate text-xs text-slate-500">{session?.email}</p>
+          <p className="sidebar-subtle truncate text-xs">{session?.email}</p>
           <DriveBadge />
           <button
             type="button"
             onClick={logout}
-            className="h-10 w-full rounded-xl border border-slate-200 text-sm font-medium hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-800"
+            className="btn-secondary h-10 w-full rounded-xl text-sm font-medium text-white hover:bg-white/10"
           >
             Sair
           </button>
@@ -93,7 +93,7 @@ export function Layout() {
       </aside>
 
       <div className="lg:pl-64">
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-900/90">
+        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-amber-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden dark:border-amber-900/40 dark:bg-slate-900/90">
           <div className="flex items-center gap-2">
             <img src="/icon-192.png" alt="" className="h-8 w-8 object-contain" />
             <div>
@@ -121,7 +121,7 @@ export function Layout() {
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 p-2 backdrop-blur lg:hidden dark:border-slate-800 dark:bg-slate-900/95"
+        className="app-mobile-nav fixed inset-x-0 bottom-0 z-20 border-t border-amber-200 bg-white/95 p-2 backdrop-blur lg:hidden dark:border-amber-900/40 dark:bg-slate-900/95"
         aria-label="Principal"
       >
         <div className="mx-auto flex max-w-lg gap-1">
