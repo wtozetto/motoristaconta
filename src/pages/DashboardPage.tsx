@@ -12,18 +12,21 @@ import { PlatformFilterBar } from '../components/PlatformFilter'
 import { RegistroTable } from '../components/RegistroTable'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { MoneyInput } from '../components/MoneyInput'
+import { DriveBadge } from '../components/DriveBadge'
 import { aggregateRegistros, trendDelta } from '../lib/calculations'
 import {
   filterByRange,
   getPeriodRange,
   PERIOD_LABELS,
   previousRange,
+  parseISODate,
   type DateRange,
 } from '../lib/periods'
 import { buildTips } from '../lib/tips'
-import { formatBRL, formatKm, todayISO } from '../lib/format'
-import { buildCombustivelAggregate, calculateCombustivelMetrics, getCombustiveisList } from '../lib/fuel'
+import { formatBRL, formatKm, formatPercent, formatDateISO, todayISO } from '../lib/format'
+import { buildCombustivelAggregate, calculateCombustivelMetrics, getCombustiveisList, getCombustivelValor } from '../lib/fuel'
 import { getAllManutencaoAlertas, getKmAtual } from '../lib/maintenance'
+import { useReminders } from '../hooks/useReminders'
 import { validateRegistro } from '../lib/validation'
 import type {
   CombustivelTipo,
@@ -45,7 +48,7 @@ const PRESETS: PeriodPreset[] = [
 ]
 
 export function DashboardPage() {
-  const { registros, manutencoes, saveRegistro, removeRegistro } = useData()
+  const { registros, manutencoes, contasFixas, saveRegistro, removeRegistro } = useData()
   const { settings } = useTheme()
   const [preset, setPreset] = useState<PeriodPreset>('mensal')
   const [custom, setCustom] = useState<DateRange>({ start: todayISO(), end: todayISO() })
@@ -67,6 +70,43 @@ export function DashboardPage() {
   const current = aggregateRegistros(currentRows, filter)
   const previous = aggregateRegistros(previousRows, filter)
   const tips = buildTips(currentRows, settings, filter)
+  const today = todayISO()
+  const periodDate = useMemo(() => parseISODate(today), [today])
+  const monthRange = useMemo(() => getPeriodRange('mensal', periodDate), [periodDate])
+  const yearRange = useMemo(() => getPeriodRange('anual', periodDate), [periodDate])
+  const todayMetrics = useMemo(
+    () => aggregateRegistros(filterByRange(registros, { start: today, end: today })),
+    [registros, today],
+  )
+  const monthRows = useMemo(() => filterByRange(registros, monthRange), [registros, monthRange])
+  const yearRows = useMemo(() => filterByRange(registros, yearRange), [registros, yearRange])
+  const monthMetrics = useMemo(() => aggregateRegistros(monthRows), [monthRows])
+  const yearMetrics = useMemo(() => aggregateRegistros(yearRows), [yearRows])
+  const monthFuel = useMemo(
+    () => monthRows.reduce((total, registro) => total + getCombustivelValor(registro.combustivel), 0),
+    [monthRows],
+  )
+  const monthMaintenance = useMemo(
+    () =>
+      manutencoes
+        .filter((item) => item.status === 'concluido' && item.data >= monthRange.start && item.data <= monthRange.end)
+        .reduce((total, item) => total + item.valor, 0),
+    [manutencoes, monthRange],
+  )
+  const yearMaintenance = useMemo(
+    () =>
+      manutencoes
+        .filter((item) => item.status === 'concluido' && item.data >= yearRange.start && item.data <= yearRange.end)
+        .reduce((total, item) => total + item.valor, 0),
+    [manutencoes, yearRange],
+  )
+  const reminders = useReminders(contasFixas, manutencoes, settings.alertaManutencaoDias)
+  const goalProgress = settings.metaMensal > 0 ? monthMetrics.totalGanhos / settings.metaMensal : 0
+  const goalRemaining = Math.max(0, settings.metaMensal - monthMetrics.totalGanhos)
+  const nowDate = periodDate
+  const year = nowDate.getFullYear()
+  const monthDays = [31, year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][nowDate.getMonth()]
+  const daysRemaining = monthDays - nowDate.getDate() + 1
 
   // Manutenção no período filtrado
   const currentManutencoes = useMemo(
@@ -132,18 +172,78 @@ export function DashboardPage() {
             Período de {range.start} a {range.end}. Setas comparam com o intervalo anterior.
           </p>
         </div>
-
-        {/* Toggle Custo Total Real */}
-        <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold sm:text-sm dark:border-slate-800 dark:bg-slate-900">
-          <input
-            type="checkbox"
-            checked={includeMaintenance}
-            onChange={(e) => setIncludeMaintenance(e.target.checked)}
-            className="h-4 w-4 rounded accent-emerald-600"
-          />
-          <span>Custo total real (inclui manutenção)</span>
-        </label>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <DriveBadge />
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold sm:text-sm dark:border-slate-800 dark:bg-slate-900">
+            <input
+              type="checkbox"
+              checked={includeMaintenance}
+              onChange={(e) => setIncludeMaintenance(e.target.checked)}
+              className="h-4 w-4 rounded accent-emerald-600"
+            />
+            <span>Custo total real (inclui manutenção)</span>
+          </label>
+        </div>
       </header>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="font-semibold">Hoje</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div><p className="text-xs text-slate-500">Ganhos</p><p className="text-lg font-bold">{formatBRL(todayMetrics.totalGanhos)}</p></div>
+            <div><p className="text-xs text-slate-500">Km percorridos</p><p className="text-lg font-bold">{formatKm(todayMetrics.km)}</p></div>
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-emerald-200 bg-white p-4 dark:border-emerald-900 dark:bg-slate-900">
+          <h2 className="font-semibold">Este mês</h2>
+          <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+            <div><p className="text-xs text-slate-500">Ganhos</p><p className="font-bold">{formatBRL(monthMetrics.totalGanhos)}</p></div>
+            <div><p className="text-xs text-slate-500">Combustível</p><p className="font-bold">{formatBRL(monthFuel)}</p></div>
+            <div><p className="text-xs text-slate-500">Manutenção</p><p className="font-bold">{formatBRL(monthMaintenance)}</p></div>
+            <div><p className="text-xs text-slate-500">Km total</p><p className="font-bold">{formatKm(monthMetrics.km)}</p></div>
+            <div className="col-span-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+              <p className="text-xs text-slate-500">Lucro (inclui todos os gastos)</p>
+              <p className={`font-bold ${monthMetrics.totalGanhos - monthMetrics.totalGastos - monthMaintenance >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                {formatBRL(monthMetrics.totalGanhos - monthMetrics.totalGastos - monthMaintenance)}
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+            <div className="flex justify-between gap-2 text-xs">
+              <span className="font-semibold">Meta mensal</span>
+              <span>{settings.metaMensal > 0 ? `${formatBRL(monthMetrics.totalGanhos)} / ${formatBRL(settings.metaMensal)}` : 'Configure em Configurações'}</span>
+            </div>
+            {settings.metaMensal > 0 ? (
+              <>
+                <div
+                  className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
+                  role="progressbar"
+                  aria-label="Progresso da meta mensal"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.min(100, Math.round(goalProgress * 100))}
+                >
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Math.max(0, goalProgress * 100))}%` }} />
+                </div>
+                <div className="mt-2 flex justify-between gap-2 text-xs text-slate-500">
+                  <span>{formatPercent(goalProgress)} concluído · faltam {formatBRL(goalRemaining)}</span>
+                  <span>{goalRemaining === 0 ? 'Meta atingida' : `${formatBRL(goalRemaining / daysRemaining)}/dia · ${daysRemaining} ${daysRemaining === 1 ? 'dia restante' : 'dias restantes'}`}</span>
+                </div>
+              </>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <h2 className="font-semibold">Este ano</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <div><p className="text-xs text-slate-500">Ganhos totais</p><p className="text-lg font-bold">{formatBRL(yearMetrics.totalGanhos)}</p></div>
+            <div><p className="text-xs text-slate-500">Gastos totais</p><p className="text-lg font-bold">{formatBRL(yearMetrics.totalGastos + yearMaintenance)}</p></div>
+            <div className="col-span-2"><p className="text-xs text-slate-500">Km total</p><p className="text-lg font-bold">{formatKm(yearMetrics.km)}</p></div>
+          </div>
+        </article>
+      </section>
 
       {/* Alerta inteligente de manutenção no topo */}
       {urgentAlerts.length > 0 ? (
@@ -470,6 +570,47 @@ export function DashboardPage() {
       >
         O lançamento será removido deste navegador.
       </ConfirmDialog>
+
+      <section className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold">Próximos vencimentos</h2>
+            <p className="text-xs text-slate-500">Contas e manutenções para os próximos {settings.alertaManutencaoDias} dias.</p>
+          </div>
+          <Link to="/lembretes" className="text-sm font-semibold text-emerald-600 hover:underline">
+            Gerenciar
+          </Link>
+        </div>
+        {reminders.length === 0 ? (
+          <p className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900">
+            Nenhum vencimento próximo.
+          </p>
+        ) : (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {reminders.map((reminder) => (
+              <li
+                key={`${reminder.tipo}-${reminder.id}`}
+                className={`flex items-center justify-between gap-3 rounded-xl border p-3 text-sm ${
+                  reminder.status === 'vencido'
+                    ? 'border-rose-300 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/30'
+                    : reminder.status === 'vence_hoje'
+                      ? 'border-amber-300 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30'
+                      : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-semibold">{reminder.titulo}</p>
+                  <p className="text-xs text-slate-500">
+                    {formatDateISO(reminder.dataVencimento)}
+                    {reminder.valor !== undefined ? ` · ${formatBRL(reminder.valor)}` : ''}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-semibold">{reminder.mensagem}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   )
 }

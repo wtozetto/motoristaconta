@@ -141,6 +141,9 @@ export interface AppSettings {
   theme: ThemePreference
   alertaManutencaoDias: number
   alertaManutencaoKm: number
+  metaMensal: number          // monthly goal in R$, default 0 (disabled)
+  lembreteRegistroDiario: boolean  // daily reminder toggle, default false
+  gastosFixosMensais: number  // total fixed monthly expenses (seguro+IPVA+depreciacao), default 0
 }
 
 export const BACKUP_VERSION = 2 as const
@@ -183,4 +186,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   alertaManutencaoDias: 30,
   alertaManutencaoKm: 500,
+  metaMensal: 0,
+  lembreteRegistroDiario: false,
+  gastosFixosMensais: 0,
 }

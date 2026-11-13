@@ -17,6 +17,10 @@ export function loadSettings(): AppSettings {
       alertaManutencaoKm: Number(
         parsed.alertaManutencaoKm ?? DEFAULT_SETTINGS.alertaManutencaoKm,
       ),
+      metaMensal: Number(parsed.metaMensal ?? DEFAULT_SETTINGS.metaMensal),
+      lembreteRegistroDiario:
+        parsed.lembreteRegistroDiario ?? DEFAULT_SETTINGS.lembreteRegistroDiario,
+      gastosFixosMensais: Number(parsed.gastosFixosMensais ?? DEFAULT_SETTINGS.gastosFixosMensais),
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
