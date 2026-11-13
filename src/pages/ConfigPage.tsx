@@ -18,6 +18,7 @@ import type { ThemePreference } from '../types'
 import { aggregateRegistros } from '../lib/calculations'
 import { getCombustivelValor } from '../lib/fuel'
 import { exportarRelatorioPDF } from '../utils/pdfExport'
+import { getLocalCategoriasManutencaoStamp } from '../drive/syncStorage'
 
 export function ConfigPage() {
   const { session, logout } = useAuth()
@@ -26,9 +27,11 @@ export function ConfigPage() {
     registros,
     manutencoes,
     contasFixas,
+    categoriasManutencao,
     importRegistros,
     importManutencoes,
     importContasFixas,
+    importCategoriasManutencao,
   } = useData()
   const { status, message: driveMessage, lastSyncAt, syncNow, reconnect } = useDrive()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -41,7 +44,17 @@ export function ConfigPage() {
   const [isSyncing, setIsSyncing] = useState(false)
 
   function exportJson() {
-    const json = backupToJson(registros, settings, manutencoes, undefined, undefined, undefined, contasFixas)
+    const json = backupToJson(
+      registros,
+      settings,
+      manutencoes,
+      undefined,
+      undefined,
+      undefined,
+      contasFixas,
+      categoriasManutencao,
+      getLocalCategoriasManutencaoStamp(),
+    )
     downloadJsonBackup(`motoristaconta-${todayISO()}.json`, json)
   }
 
@@ -450,6 +463,14 @@ export function ConfigPage() {
             await importContasFixas(nextContasFixas, 'replace')
           }
 
+          if (pendingPayload.categoriasManutencao) {
+            await importCategoriasManutencao(
+              pendingPayload.categoriasManutencao,
+              importMode,
+              pendingPayload.categoriasManutencaoAtualizadoEm,
+            )
+          }
+
           if (pendingPayload.settings) {
             updateSettings(pendingPayload.settings)
           }
@@ -465,8 +486,9 @@ export function ConfigPage() {
       >
         <p>
           Encontramos {pendingPayload?.registros.length ?? 0} lançamento(s),{' '}
-          {pendingPayload?.manutencoes?.length ?? 0} registro(s) de manutenção e{' '}
-          {pendingPayload?.contasFixas?.length ?? 0} vencimento(s) no arquivo. Escolha
+          {pendingPayload?.manutencoes?.length ?? 0} registro(s) de manutenção,{' '}
+          {pendingPayload?.contasFixas?.length ?? 0} vencimento(s) e{' '}
+          {pendingPayload?.categoriasManutencao?.length ?? 0} categoria(s) personalizada(s) no arquivo. Escolha
           mesclar (mantém os seus e atualiza registros coincidentes se o arquivo for mais novo) ou
           substituir (apaga os dados atuais).
         </p>

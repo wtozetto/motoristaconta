@@ -35,7 +35,7 @@ const emptyManutencaoInput = (kmAtual = 0): ManutencaoInput => ({
 type FilterTab = 'todas' | 'alertas' | 'concluido' | 'programado'
 
 export function ManutencaoPage() {
-  const { manutencoes, registros, saveManutencao, removeManutencao } = useData()
+  const { manutencoes, registros, categoriasManutencao, saveManutencao, removeManutencao } = useData()
   const { settings } = useTheme()
 
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -237,6 +237,7 @@ export function ManutencaoPage() {
         <ManutencaoForm
           editing={editing}
           kmAtual={kmAtual}
+          customCategories={categoriasManutencao}
           onCancel={handleCancelForm}
           onSubmit={async (input, id) => {
             await saveManutencao(input, id)
@@ -433,11 +434,12 @@ export function ManutencaoPage() {
 interface ManutencaoFormProps {
   editing?: Manutencao | null
   kmAtual: number
+  customCategories: string[]
   onCancel: () => void
   onSubmit: (input: ManutencaoInput, id?: string) => Promise<void>
 }
 
-function ManutencaoForm({ editing, kmAtual, onCancel, onSubmit }: ManutencaoFormProps) {
+function ManutencaoForm({ editing, kmAtual, customCategories, onCancel, onSubmit }: ManutencaoFormProps) {
   const [form, setForm] = useState<ManutencaoInput>(() =>
     editing
       ? {
@@ -467,6 +469,7 @@ function ManutencaoForm({ editing, kmAtual, onCancel, onSubmit }: ManutencaoForm
   )
   const [errors, setErrors] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const categoryOptions = [...new Set([...MANUTENCAO_CATEGORIAS, ...customCategories])]
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -574,7 +577,7 @@ function ManutencaoForm({ editing, kmAtual, onCancel, onSubmit }: ManutencaoForm
             }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
           >
-            {MANUTENCAO_CATEGORIAS.map((cat) => (
+            {categoryOptions.map((cat) => (
               <option key={cat} value={cat}>
                 {cat === 'Seguro' ? '🚗 Seguro' : cat}
               </option>

@@ -112,6 +112,23 @@ describe('compararESincronizar', () => {
     expect(result.action).toBe('noop')
   })
 
+  it('sincroniza as categorias personalizadas pela data da última alteração', () => {
+    const local = {
+      ...payload([], '2026-10-08T00:00:00.000Z'),
+      categoriasManutencao: ['Lavagem', 'Pedágio'],
+      categoriasManutencaoAtualizadoEm: '2026-10-09T00:00:00.000Z',
+    }
+    const remote = {
+      ...payload([], '2026-10-08T00:00:00.000Z'),
+      categoriasManutencao: ['Lavagem'],
+      categoriasManutencaoAtualizadoEm: '2026-10-08T00:00:00.000Z',
+    }
+    const result = compararESincronizar(local, remote, now)
+    expect(result.action).toBe('local-applied')
+    expect(result.mergedPayload.categoriasManutencao).toEqual(['Lavagem', 'Pedágio'])
+    expect(result.needsRemoteUpload).toBe(true)
+  })
+
   it('local vazio + remoto com dados → remote-applied', () => {
     const local = payload([], now)
     const remote = payload(

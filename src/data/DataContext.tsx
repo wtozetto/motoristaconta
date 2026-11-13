@@ -12,6 +12,7 @@ import {
   deleteManutencao,
   deleteRegistro,
   listContasFixas,
+  listCategoriasManutencao,
   listManutencoes,
   listRegistros,
   mergeContasFixas,
@@ -20,6 +21,7 @@ import {
   replaceAllContasFixas,
   replaceAllManutencoes,
   replaceAllRegistros,
+  replaceCategoriasManutencao,
   upsertContaFixa,
   upsertManutencao,
   upsertRegistro,
@@ -38,12 +40,14 @@ import { getLatestRecordStamp } from '../lib/backup'
 import {
   getLocalModificacaoStamp,
   setLocalModificacaoStamp,
+  setLocalCategoriasManutencaoStamp,
 } from '../drive/syncStorage'
 
 interface DataContextValue {
   registros: Registro[]
   manutencoes: Manutencao[]
   contasFixas: ContaFixa[]
+  categoriasManutencao: string[]
   loading: boolean
   ultimaModificacao: string
   saveRegistro: (input: RegistroInput, id?: string) => Promise<void>
@@ -55,6 +59,13 @@ interface DataContextValue {
   saveContaFixa: (input: ContaFixaInput, id?: string) => Promise<void>
   removeContaFixa: (id: string) => Promise<void>
   importContasFixas: (incoming: ContaFixa[], mode: 'merge' | 'replace') => Promise<void>
+  saveCategoriaManutencao: (nome: string, nomeAnterior?: string) => Promise<void>
+  removeCategoriaManutencao: (nome: string) => Promise<void>
+  importCategoriasManutencao: (
+    incoming: string[],
+    mode: 'merge' | 'replace',
+    atualizadoEm?: string,
+  ) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -64,18 +75,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [registros, setRegistros] = useState<Registro[]>([])
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([])
   const [contasFixas, setContasFixas] = useState<ContaFixa[]>([])
+  const [categoriasManutencao, setCategoriasManutencao] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [ultimaModificacao, setUltimaModificacaoState] = useState<string>(getLocalModificacaoStamp())
 
   const refresh = useCallback(async () => {
-    const [rowsRegistros, rowsManutencoes, rowsContasFixas] = await Promise.all([
+    const [rowsRegistros, rowsManutencoes, rowsContasFixas, rowsCategorias] = await Promise.all([
       listRegistros(),
       listManutencoes(),
       listContasFixas(),
+      listCategoriasManutencao(),
     ])
     setRegistros(rowsRegistros)
     setManutencoes(rowsManutencoes)
     setContasFixas(rowsContasFixas)
+    setCategoriasManutencao(rowsCategorias)
 
     let currentMod = getLocalModificacaoStamp()
     if (!currentMod) {
@@ -283,11 +297,70 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [refresh],
   )
 
+  const saveCategoriaManutencao = useCallback(
+    async (nome: string, nomeAnterior?: string) => {
+      const trimmed = nome.trim()
+      if (!trimmed) throw new Error('Informe o nome da categoria.')
+      if (trimmed.length > 50) throw new Error('A categoria deve ter no máximo 50 caracteres.')
+      const current = categoriasManutencao.filter((item) => item !== nomeAnterior)
+      if (current.some((item) => item.toLocaleLowerCase() === trimmed.toLocaleLowerCase())) {
+        throw new Error('Já existe uma categoria com esse nome.')
+      }
+      const next = [...current, trimmed].sort((a, b) => a.localeCompare(b))
+      const now = new Date().toISOString()
+      await replaceCategoriasManutencao(next)
+      setLocalCategoriasManutencaoStamp(now)
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
+      await refresh()
+    },
+    [categoriasManutencao, refresh],
+  )
+
+  const removeCategoriaManutencao = useCallback(
+    async (nome: string) => {
+      const next = categoriasManutencao.filter((item) => item !== nome)
+      const now = new Date().toISOString()
+      await replaceCategoriasManutencao(next)
+      setLocalCategoriasManutencaoStamp(now)
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
+      await refresh()
+    },
+    [categoriasManutencao, refresh],
+  )
+
+  const importCategoriasManutencao = useCallback(
+    async (incoming: string[], mode: 'merge' | 'replace', atualizadoEm?: string) => {
+      const next =
+        mode === 'replace'
+          ? incoming
+          : [...categoriasManutencao, ...incoming]
+      const unique = [
+        ...new Map(
+          next
+            .map((nome) => nome.trim())
+            .filter(Boolean)
+            .map((nome) => [nome.toLocaleLowerCase(), nome]),
+        ).values(),
+      ].sort((a, b) => a.localeCompare(b))
+      await replaceCategoriasManutencao(unique)
+      const stamp = mode === 'replace' && atualizadoEm ? atualizadoEm : new Date().toISOString()
+      setLocalCategoriasManutencaoStamp(stamp)
+      const now = new Date().toISOString()
+      setLocalModificacaoStamp(now)
+      setUltimaModificacaoState(now)
+      await refresh()
+    },
+    [categoriasManutencao, refresh],
+  )
+
   const value = useMemo(
     () => ({
       registros,
       manutencoes,
       contasFixas,
+      categoriasManutencao,
       loading,
       ultimaModificacao,
       saveRegistro,
@@ -299,12 +372,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveContaFixa,
       removeContaFixa,
       importContasFixas,
+      saveCategoriaManutencao,
+      removeCategoriaManutencao,
+      importCategoriasManutencao,
       refresh,
     }),
     [
       registros,
       manutencoes,
       contasFixas,
+      categoriasManutencao,
       loading,
       ultimaModificacao,
       saveRegistro,
@@ -316,6 +393,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveContaFixa,
       removeContaFixa,
       importContasFixas,
+      saveCategoriaManutencao,
+      removeCategoriaManutencao,
+      importCategoriasManutencao,
       refresh,
     ],
   )

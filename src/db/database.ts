@@ -5,6 +5,7 @@ export class MotoristaDB extends Dexie {
   registros!: Table<Registro, string>
   manutencoes!: Table<Manutencao, string>
   contasFixas!: Table<ContaFixa, string>
+  categoriasManutencao!: Table<{ id: string; nome: string }, string>
 
   constructor() {
     super('MotoristaConta')
@@ -19,6 +20,12 @@ export class MotoristaDB extends Dexie {
       registros: 'id, data, atualizadoEm',
       manutencoes: 'id, data, status, atualizadoEm',
       contasFixas: 'id, dataVencimento, status, atualizadoEm',
+    })
+    this.version(4).stores({
+      registros: 'id, data, atualizadoEm',
+      manutencoes: 'id, data, status, atualizadoEm',
+      contasFixas: 'id, dataVencimento, status, atualizadoEm',
+      categoriasManutencao: 'id, nome',
     })
   }
 }
@@ -130,4 +137,28 @@ export async function mergeContasFixas(incoming: ContaFixa[]): Promise<void> {
     if (!previous || conta.atualizadoEm >= previous.atualizadoEm) map.set(conta.id, conta)
   }
   await replaceAllContasFixas([...map.values()])
+}
+
+export async function listCategoriasManutencao(): Promise<string[]> {
+  const rows = await db.categoriasManutencao.orderBy('nome').toArray()
+  return rows.map((row) => row.nome)
+}
+
+export async function replaceCategoriasManutencao(categorias: string[]): Promise<void> {
+  const unique = [
+    ...new Map(
+      categorias
+        .map((nome) => nome.trim())
+        .filter(Boolean)
+        .map((nome) => [nome.toLocaleLowerCase(), nome]),
+    ).values(),
+  ]
+  await db.transaction('rw', db.categoriasManutencao, async () => {
+    await db.categoriasManutencao.clear()
+    if (unique.length > 0) {
+      await db.categoriasManutencao.bulkPut(
+        unique.map((nome) => ({ id: nome.toLocaleLowerCase(), nome })),
+      )
+    }
+  })
 }

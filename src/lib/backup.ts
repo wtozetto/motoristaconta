@@ -45,6 +45,8 @@ export function serializeBackup(
   ultimaModificacao?: string,
   ultimaSincronizacao?: string,
   contasFixas: ContaFixa[] = [],
+  categoriasManutencao: string[] = [],
+  categoriasManutencaoAtualizadoEm?: string,
 ): BackupPayload {
   let manutencoes: Manutencao[] = []
   let exportedAt = new Date().toISOString()
@@ -72,6 +74,8 @@ export function serializeBackup(
     registros: structuredClone(registros),
     manutencoes: structuredClone(manutencoes),
     contasFixas: structuredClone(contasFixas),
+    categoriasManutencao: [...categoriasManutencao],
+    categoriasManutencaoAtualizadoEm: categoriasManutencaoAtualizadoEm || modStamp,
   }
 }
 
@@ -83,6 +87,8 @@ export function backupToJson(
   ultimaModificacao?: string,
   ultimaSincronizacao?: string,
   contasFixas: ContaFixa[] = [],
+  categoriasManutencao: string[] = [],
+  categoriasManutencaoAtualizadoEm?: string,
 ): string {
   return JSON.stringify(
     serializeBackup(
@@ -93,6 +99,8 @@ export function backupToJson(
       ultimaModificacao,
       ultimaSincronizacao,
       contasFixas,
+      categoriasManutencao,
+      categoriasManutencaoAtualizadoEm,
     ),
     null,
     2,
@@ -142,6 +150,13 @@ export function parseBackupJson(raw: string): BackupPayload {
     registros,
     manutencoes,
     contasFixas,
+    categoriasManutencao: Array.isArray(data.categoriasManutencao)
+      ? [...new Set(data.categoriasManutencao.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean))]
+      : undefined,
+    categoriasManutencaoAtualizadoEm:
+      typeof data.categoriasManutencaoAtualizadoEm === 'string'
+        ? data.categoriasManutencaoAtualizadoEm
+        : ultimaModificacao,
   }
 }
 

@@ -25,6 +25,7 @@ import { loadDriveFileIds, saveDriveFileIds } from './fileIds'
 import {
   getLocalModificacaoStamp,
   getLocalSincronizacaoStamp,
+  getLocalCategoriasManutencaoStamp,
   setLocalModificacaoStamp,
   setLocalSincronizacaoStamp,
 } from './syncStorage'
@@ -50,10 +51,12 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     registros,
     manutencoes,
     contasFixas,
+    categoriasManutencao,
     loading,
     importRegistros,
     importManutencoes,
     importContasFixas,
+    importCategoriasManutencao,
   } = useData()
   const { settings, updateSettings } = useTheme()
   const [status, setStatus] = useState<DriveStatus>('idle')
@@ -88,6 +91,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       nextModificacao = getLocalModificacaoStamp(),
       nextSincronizacao = new Date().toISOString(),
       nextContasFixas = contasFixas,
+      nextCategoriasManutencao = categoriasManutencao,
+      nextCategoriasStamp = getLocalCategoriasManutencaoStamp(),
     ) => {
       if (!session) return
       const payload = serializeBackup(
@@ -98,6 +103,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         nextModificacao,
         nextSincronizacao,
         nextContasFixas,
+        nextCategoriasManutencao,
+        nextCategoriasStamp,
       )
       const ids = loadDriveFileIds(session.googleId)
       const file = await upsertJsonFile(
@@ -111,7 +118,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       setLastSyncAt(nextSincronizacao)
       setStatus('ok')
     },
-    [contasFixas, manutencoes, persistIds, registros, session, settings],
+    [categoriasManutencao, contasFixas, manutencoes, persistIds, registros, session, settings],
   )
 
   const writeAccessLog = useCallback(
@@ -192,6 +199,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         localMod,
         localSync,
         contasFixas,
+        categoriasManutencao,
+        getLocalCategoriasManutencaoStamp(),
       )
 
       // Compara e resolve a precedência e mesclagem registro a registro
@@ -200,6 +209,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       let nextRegistros = registros
       let nextManutencoes = manutencoes
       let nextContasFixas = contasFixas
+      let nextCategoriasManutencao = categoriasManutencao
+      let nextCategoriasStamp = getLocalCategoriasManutencaoStamp()
       let nextSettings = settings
 
       if (syncResult.needsLocalUpdate) {
@@ -207,10 +218,18 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         nextRegistros = syncResult.mergedRegistros
         nextManutencoes = syncResult.mergedManutencoes
         nextContasFixas = syncResult.mergedContasFixas
+        nextCategoriasManutencao = syncResult.mergedPayload.categoriasManutencao ?? []
+        nextCategoriasStamp =
+          syncResult.mergedPayload.categoriasManutencaoAtualizadoEm ?? nextCategoriasStamp
         nextSettings = syncResult.mergedPayload.settings
         await importRegistros(nextRegistros, 'replace')
         await importManutencoes(nextManutencoes, 'replace')
         await importContasFixas(nextContasFixas, 'replace')
+        await importCategoriasManutencao(
+          nextCategoriasManutencao,
+          'replace',
+          nextCategoriasStamp,
+        )
         if (syncResult.mergedPayload.settings) {
           updateSettings(syncResult.mergedPayload.settings)
         }
@@ -228,6 +247,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           syncResult.mergedPayload.ultimaModificacao,
           syncResult.mergedPayload.ultimaSincronizacao,
           nextContasFixas,
+          nextCategoriasManutencao,
+          nextCategoriasStamp,
         )
       }
 
@@ -252,10 +273,12 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     ensureDriveToken,
     importManutencoes,
     importContasFixas,
+    importCategoriasManutencao,
     importRegistros,
     isDevBypass,
     manutencoes,
     contasFixas,
+    categoriasManutencao,
     persistIds,
     registros,
     session,
@@ -297,6 +320,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
             getLocalModificacaoStamp() || now,
             now,
             contasFixas,
+            categoriasManutencao,
+            getLocalCategoriasManutencaoStamp(),
           )
           setMessage('Sincronizado — dados locais estão mais atualizados, enviados ao Google Drive')
         } catch (err) {
@@ -314,6 +339,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     loading,
     manutencoes,
     contasFixas,
+    categoriasManutencao,
     registros,
     settings,
     uploadPayload,
@@ -353,6 +379,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         localMod,
         localSync,
         contasFixas,
+        categoriasManutencao,
+        getLocalCategoriasManutencaoStamp(),
       )
 
       const syncResult = compararESincronizar(localPayload, remote, now)
@@ -360,6 +388,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       let nextRegistros = registros
       let nextManutencoes = manutencoes
       let nextContasFixas = contasFixas
+      let nextCategoriasManutencao = categoriasManutencao
+      let nextCategoriasStamp = getLocalCategoriasManutencaoStamp()
       let nextSettings = settings
 
       if (syncResult.needsLocalUpdate) {
@@ -367,10 +397,18 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         nextRegistros = syncResult.mergedRegistros
         nextManutencoes = syncResult.mergedManutencoes
         nextContasFixas = syncResult.mergedContasFixas
+        nextCategoriasManutencao = syncResult.mergedPayload.categoriasManutencao ?? []
+        nextCategoriasStamp =
+          syncResult.mergedPayload.categoriasManutencaoAtualizadoEm ?? nextCategoriasStamp
         nextSettings = syncResult.mergedPayload.settings
         await importRegistros(nextRegistros, 'replace')
         await importManutencoes(nextManutencoes, 'replace')
         await importContasFixas(nextContasFixas, 'replace')
+        await importCategoriasManutencao(
+          nextCategoriasManutencao,
+          'replace',
+          nextCategoriasStamp,
+        )
         if (syncResult.mergedPayload.settings) {
           updateSettings(syncResult.mergedPayload.settings)
         }
@@ -388,6 +426,8 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           syncResult.mergedPayload.ultimaModificacao,
           syncResult.mergedPayload.ultimaSincronizacao,
           nextContasFixas,
+          nextCategoriasManutencao,
+          nextCategoriasStamp,
         )
       }
 
@@ -403,10 +443,12 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     ensureDriveToken,
     importManutencoes,
     importContasFixas,
+    importCategoriasManutencao,
     importRegistros,
     isDevBypass,
     manutencoes,
     contasFixas,
+    categoriasManutencao,
     persistIds,
     registros,
     session,

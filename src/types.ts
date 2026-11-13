@@ -188,6 +188,8 @@ export interface BackupPayload {
   registros: Registro[]
   manutencoes?: Manutencao[]
   contasFixas?: ContaFixa[]
+  categoriasManutencao?: string[]
+  categoriasManutencaoAtualizadoEm?: string
 }
 
 export const PLATFORM_LABEL: Record<PlatformKey, string> = {

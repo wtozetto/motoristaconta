@@ -79,6 +79,28 @@ describe('JSON import/export', () => {
     expect(parsed.settings.metaMensal).toBe(12000)
   })
 
+  it('preserva categorias personalizadas no backup e lê backups antigos sem categorias', () => {
+    const json = backupToJson(
+      [older],
+      DEFAULT_SETTINGS,
+      [manutencaoExemplo],
+      undefined,
+      undefined,
+      undefined,
+      [contaExemplo],
+      ['Lavagem', 'Pedágio'],
+      '2026-10-10T00:00:00.000Z',
+    )
+    const parsed = parseBackupJson(json)
+    expect(parsed.categoriasManutencao).toEqual(['Lavagem', 'Pedágio'])
+    expect(parsed.categoriasManutencaoAtualizadoEm).toBe('2026-10-10T00:00:00.000Z')
+
+    const legacy = parseBackupJson(
+      JSON.stringify({ settings: DEFAULT_SETTINGS, registros: [] }),
+    )
+    expect(legacy.categoriasManutencao).toBeUndefined()
+  })
+
   it('migra retrocompativelmente registros antigos com combustivel numérico', () => {
     const legacyRaw = JSON.stringify({
       version: 1,

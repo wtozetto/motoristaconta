@@ -47,11 +47,15 @@ export function compararESincronizar(
   now = new Date().toISOString(),
 ): SyncComparisonResult {
   const localCount =
-    local.registros.length + (local.manutencoes?.length ?? 0) + (local.contasFixas?.length ?? 0)
+    local.registros.length +
+    (local.manutencoes?.length ?? 0) +
+    (local.contasFixas?.length ?? 0) +
+    (local.categoriasManutencao?.length ?? 0)
   const remoteCount =
     (remoto?.registros.length ?? 0) +
     (remoto?.manutencoes?.length ?? 0) +
-    (remoto?.contasFixas?.length ?? 0)
+    (remoto?.contasFixas?.length ?? 0) +
+    (remoto?.categoriasManutencao?.length ?? 0)
 
   // Caso 1: Ambos vazios
   if (localCount === 0 && (!remoto || remoteCount === 0)) {
@@ -218,6 +222,38 @@ export function compararESincronizar(
     }
   }
 
+  let mergedCategorias = local.categoriasManutencao ?? []
+  const localCategoriasStamp = local.categoriasManutencaoAtualizadoEm || localMod
+  const remoteCategoriasStamp = remoto.categoriasManutencaoAtualizadoEm || remoteMod
+  let mergedCategoriasStamp = localCategoriasStamp
+  if (
+    JSON.stringify(local.categoriasManutencao ?? []) !==
+    JSON.stringify(remoto.categoriasManutencao ?? [])
+  ) {
+    if (remoteCategoriasStamp > localCategoriasStamp) {
+      mergedCategorias = remoto.categoriasManutencao ?? []
+      mergedCategoriasStamp = remoteCategoriasStamp
+      remoteHasNewer = true
+    } else if (localCategoriasStamp > remoteCategoriasStamp) {
+      mergedCategorias = local.categoriasManutencao ?? []
+      mergedCategoriasStamp = localCategoriasStamp
+      localHasNewer = true
+    } else {
+      mergedCategorias = [
+        ...new Set([
+          ...(local.categoriasManutencao ?? []),
+          ...(remoto.categoriasManutencao ?? []),
+        ]),
+      ]
+      mergedCategoriasStamp = now
+      localHasNewer = true
+      remoteHasNewer = true
+    }
+  } else {
+    mergedCategoriasStamp =
+      localCategoriasStamp > remoteCategoriasStamp ? localCategoriasStamp : remoteCategoriasStamp
+  }
+
   // Verificação de timestamps gerais caso não tenha havido inclusão/alteração de registros
   if (!localHasNewer && !remoteHasNewer) {
     if (localMod > remoteMod && localMod > (remoto.ultimaSincronizacao ?? '')) {
@@ -246,6 +282,8 @@ export function compararESincronizar(
       registros: mergedRegistros,
       manutencoes: mergedManutencoes,
       contasFixas: mergedContasFixas,
+      categoriasManutencao: mergedCategorias,
+      categoriasManutencaoAtualizadoEm: mergedCategoriasStamp,
     }
     return {
       action: 'merged',
@@ -271,6 +309,8 @@ export function compararESincronizar(
       registros: mergedRegistros,
       manutencoes: mergedManutencoes,
       contasFixas: mergedContasFixas,
+      categoriasManutencao: mergedCategorias,
+      categoriasManutencaoAtualizadoEm: mergedCategoriasStamp,
     }
     return {
       action: 'remote-applied',
@@ -296,6 +336,8 @@ export function compararESincronizar(
       registros: mergedRegistros,
       manutencoes: mergedManutencoes,
       contasFixas: mergedContasFixas,
+      categoriasManutencao: mergedCategorias,
+      categoriasManutencaoAtualizadoEm: mergedCategoriasStamp,
     }
     return {
       action: 'local-applied',
@@ -319,6 +361,8 @@ export function compararESincronizar(
     registros: mergedRegistros,
     manutencoes: mergedManutencoes,
     contasFixas: mergedContasFixas,
+    categoriasManutencao: mergedCategorias,
+    categoriasManutencaoAtualizadoEm: mergedCategoriasStamp,
   }
   return {
     action: 'up-to-date',

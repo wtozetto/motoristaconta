@@ -8,6 +8,7 @@ const LINKS = [
   { to: '/lancamentos', label: 'Lançamentos' },
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/manutencao', label: 'Manutenção' },
+  { to: '/categorias', label: 'Categorias' },
   { to: '/lembretes', label: 'Lembretes' },
   { to: '/configuracoes', label: 'Configurações' },
 ]
