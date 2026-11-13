@@ -2,8 +2,8 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/icon-192.png">
-    <link rel="apple-touch-icon" href="/icon-512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#059669" />
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
@@ -22,7 +22,18 @@
     <title>MotoristaConta</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div
+        id="app-loading"
+        role="status"
+        aria-live="polite"
+        style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f8fafc;color:#0f172a;font-family:system-ui,sans-serif"
+      >
+        <img src="/icon-192.png" width="72" height="72" alt="" />
+        <strong>MotoristaConta</strong>
+        <span style="font-size:14px;color:#64748b">Carregando...</span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
