@@ -172,6 +172,7 @@ export interface AppSettings {
   metaMensal: number          // monthly goal in R$, default 0 (disabled)
   lembreteRegistroDiario: boolean  // daily reminder toggle, default false
   gastosFixosMensais: number  // total fixed monthly expenses (seguro+IPVA+depreciacao), default 0
+  notificacoesVencimento: boolean
 }
 
 export const BACKUP_VERSION = 2 as const
@@ -218,4 +219,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   metaMensal: 0,
   lembreteRegistroDiario: false,
   gastosFixosMensais: 0,
+  notificacoesVencimento: true,
 }

@@ -168,6 +168,10 @@ function normalizeSettings(raw: unknown): AppSettings {
         ? parsed.lembreteRegistroDiario
         : DEFAULT_SETTINGS.lembreteRegistroDiario,
     gastosFixosMensais: Math.max(0, num(parsed.gastosFixosMensais, DEFAULT_SETTINGS.gastosFixosMensais)),
+    notificacoesVencimento:
+      typeof parsed.notificacoesVencimento === 'boolean'
+        ? parsed.notificacoesVencimento
+        : DEFAULT_SETTINGS.notificacoesVencimento,
   }
 }
 export function normalizeRegistro(item: unknown, index = 0): Registro {

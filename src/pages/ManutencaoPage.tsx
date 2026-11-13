@@ -292,6 +292,7 @@ export function ManutencaoPage() {
                 return (
                   <tr
                     key={m.id}
+                    id={`manutencao-${m.id}`}
                     className="border-t border-slate-100 hover:bg-slate-50/50 dark:border-slate-800 dark:hover:bg-slate-800/40"
                   >
                     <td className="px-3 py-3">

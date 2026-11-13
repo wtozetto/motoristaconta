@@ -129,6 +129,23 @@ export function ConfigPage() {
 
       {/* Alertas de Manutenção */}
       <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+        <h2 className="font-semibold">Notificações de vencimentos</h2>
+        <label className="mt-3 flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            checked={settings.notificacoesVencimento}
+            onChange={(event) => updateSettings({ notificacoesVencimento: event.target.checked })}
+            className="mt-0.5 h-4 w-4 accent-emerald-600"
+          />
+          <span>
+            Avisar neste navegador quando uma conta ou manutenção vencer hoje ou estiver atrasada.
+            A permissão do navegador é solicitada ao abrir Lembretes.
+          </span>
+        </label>
+      </section>
+
+      {/* Alertas de Manutenção */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <h2 className="font-semibold">Alertas de Manutenção Preventiva</h2>
         <p className="mt-1 text-xs text-slate-500">
           Configure com quanta antecedência o aplicativo deve avisar sobre manutenções próximas de

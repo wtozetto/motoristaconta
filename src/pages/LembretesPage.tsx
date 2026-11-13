@@ -1,10 +1,12 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { MoneyInput } from '../components/MoneyInput'
 import { useData } from '../data/DataContext'
 import { formatBRL, formatDateISO } from '../lib/format'
 import { diasAteVencimento, getDueMessage } from '../hooks/useReminders'
+import { useReminders } from '../hooks/useReminders'
 import type { ContaFixa, ContaFixaInput } from '../types'
+import { useTheme } from '../theme/ThemeContext'
 
 const TIPOS: Array<{ value: ContaFixa['tipo']; label: string }> = [
   { value: 'seguro', label: 'Seguro' },
@@ -33,7 +35,8 @@ const urgencyStyle: Record<string, string> = {
 }
 
 export function LembretesPage() {
-  const { contasFixas, saveContaFixa, removeContaFixa } = useData()
+  const { contasFixas, manutencoes, saveContaFixa, removeContaFixa } = useData()
+  const { settings } = useTheme()
   const [form, setForm] = useState<ContaFixaInput>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +46,45 @@ export function LembretesPage() {
     () => [...contasFixas].sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento)),
     [contasFixas],
   )
+  const reminders = useReminders(contasFixas, manutencoes, settings.alertaManutencaoDias)
+  const dueItems = useMemo(() => reminders.filter((item) => item.diasRestantes <= 0), [reminders])
+
+  useEffect(() => {
+    if (!settings.notificacoesVencimento || !('Notification' in window)) return
+
+    let active = true
+    const showNotifications = async () => {
+      let permission = Notification.permission
+      if (permission === 'default') {
+        permission = await Notification.requestPermission()
+      }
+      if (!active || permission !== 'granted') return
+
+      for (const item of dueItems) {
+        const key = `motoristaconta.notification.${item.tipo}.${item.id}.${item.dataVencimento}`
+        if (sessionStorage.getItem(key)) continue
+        const target =
+          item.tipo === 'conta'
+            ? `/lembretes#lembrete-conta-${encodeURIComponent(item.id)}`
+            : `/manutencao#manutencao-${encodeURIComponent(item.id)}`
+        const notification = new Notification(
+          item.diasRestantes === 0 ? `Vence hoje: ${item.titulo}` : `Vencimento atrasado: ${item.titulo}`,
+          { body: getDueMessage(item.diasRestantes).mensagem, tag: key, data: { target } },
+        )
+        notification.onclick = () => {
+          window.focus()
+          window.location.assign(notification.data.target)
+          notification.close()
+        }
+        sessionStorage.setItem(key, 'shown')
+      }
+    }
+
+    void showNotifications()
+    return () => {
+      active = false
+    }
+  }, [dueItems, settings.notificacoesVencimento])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -170,6 +212,7 @@ export function LembretesPage() {
             return (
               <article
                 key={conta.id}
+                id={`lembrete-conta-${conta.id}`}
                 className={`flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${urgencyStyle[due.status]}`}
               >
                 <div className="min-w-0">

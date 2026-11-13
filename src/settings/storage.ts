@@ -21,6 +21,8 @@ export function loadSettings(): AppSettings {
       lembreteRegistroDiario:
         parsed.lembreteRegistroDiario ?? DEFAULT_SETTINGS.lembreteRegistroDiario,
       gastosFixosMensais: Number(parsed.gastosFixosMensais ?? DEFAULT_SETTINGS.gastosFixosMensais),
+      notificacoesVencimento:
+        parsed.notificacoesVencimento ?? DEFAULT_SETTINGS.notificacoesVencimento,
     }
   } catch {
     return { ...DEFAULT_SETTINGS }
