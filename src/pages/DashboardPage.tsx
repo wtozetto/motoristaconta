@@ -13,7 +13,7 @@ import { RegistroTable } from '../components/RegistroTable'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { MoneyInput } from '../components/MoneyInput'
 import { DriveBadge } from '../components/DriveBadge'
-import { aggregateRegistros, trendDelta } from '../lib/calculations'
+import { aggregateRegistros, calculateGoalProjection, trendDelta } from '../lib/calculations'
 import {
   filterByRange,
   getPeriodRange,
@@ -51,7 +51,7 @@ const PRESETS: PeriodPreset[] = [
 
 export function DashboardPage() {
   const { registros, manutencoes, contasFixas, saveRegistro, removeRegistro } = useData()
-  const { settings } = useTheme()
+  const { settings, updateSettings } = useTheme()
   const [preset, setPreset] = useState<PeriodPreset>('mensal')
   const [custom, setCustom] = useState<DateRange>({ start: todayISO(), end: todayISO() })
   const [filter, setFilter] = useState<PlatformFilter>('todas')
@@ -139,11 +139,16 @@ export function DashboardPage() {
   )
   const reminders = useReminders(contasFixas, manutencoes, settings.alertaManutencaoDias)
   const goalProgress = settings.metaMensal > 0 ? monthMetrics.totalGanhos / settings.metaMensal : 0
-  const goalRemaining = Math.max(0, settings.metaMensal - monthMetrics.totalGanhos)
   const nowDate = periodDate
   const year = nowDate.getFullYear()
   const monthDays = [31, year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][nowDate.getMonth()]
   const daysRemaining = monthDays - nowDate.getDate() + 1
+  const projection = calculateGoalProjection(
+    monthMetrics.totalGanhos,
+    settings.metaMensal,
+    nowDate.getDate(),
+    daysRemaining,
+  )
 
   // Manutenção no período filtrado
   const currentManutencoes = useMemo(
@@ -338,10 +343,20 @@ export function DashboardPage() {
             </div>
           </div>
           <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
-            <div className="flex justify-between gap-2 text-xs">
-              <span className="font-semibold">Meta mensal</span>
-              <span>{settings.metaMensal > 0 ? `${formatBRL(monthMetrics.totalGanhos)} / ${formatBRL(settings.metaMensal)}` : 'Configure em Configurações'}</span>
-            </div>
+            <label className="block text-xs font-semibold">
+              Quanto pretendo ganhar este mês?
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                value={settings.metaMensal}
+                onChange={(event) => {
+                  const amount = Number(event.target.value)
+                  updateSettings({ metaMensal: Number.isFinite(amount) ? Math.max(0, amount) : 0 })
+                }}
+                className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2 font-normal dark:border-slate-700 dark:bg-slate-950"
+              />
+            </label>
             {settings.metaMensal > 0 ? (
               <>
                 <div
@@ -355,9 +370,16 @@ export function DashboardPage() {
                   <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, Math.max(0, goalProgress * 100))}%` }} />
                 </div>
                 <div className="mt-2 flex justify-between gap-2 text-xs text-slate-500">
-                  <span>{formatPercent(goalProgress)} concluído · faltam {formatBRL(goalRemaining)}</span>
-                  <span>{goalRemaining === 0 ? 'Meta atingida' : `${formatBRL(goalRemaining / daysRemaining)}/dia · ${daysRemaining} ${daysRemaining === 1 ? 'dia restante' : 'dias restantes'}`}</span>
+                  <span>{formatPercent(goalProgress)} concluído · faltam {formatBRL(projection.remaining)}</span>
+                  <span>{projection.remaining === 0 ? 'Meta atingida' : `${formatBRL(projection.dailyRequired)}/dia necessário`}</span>
                 </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  {projection.daysToGoal === 0
+                    ? 'Meta atingida.'
+                    : projection.daysToGoal === null
+                      ? 'Registre ganhos para estimar quando a meta será atingida.'
+                      : `Mantendo a média atual, a meta será atingida em aproximadamente ${projection.daysToGoal} ${projection.daysToGoal === 1 ? 'dia' : 'dias'}.`}
+                </p>
               </>
             ) : null}
           </div>

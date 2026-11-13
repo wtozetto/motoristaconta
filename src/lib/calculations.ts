@@ -103,4 +103,26 @@ export function trendDelta(current: number, previous: number): number | null {
   return (current - previous) / Math.abs(previous)
 }
 
+export interface GoalProjection {
+  remaining: number
+  dailyRequired: number
+  daysToGoal: number | null
+}
+
+export function calculateGoalProjection(
+  amountSoFar: number,
+  goal: number,
+  elapsedDays: number,
+  remainingDays: number,
+): GoalProjection {
+  const remaining = Math.max(0, goal - amountSoFar)
+  const dailyAverage = elapsedDays > 0 ? amountSoFar / elapsedDays : 0
+  return {
+    remaining,
+    dailyRequired: remainingDays > 0 ? remaining / remainingDays : remaining,
+    daysToGoal:
+      remaining === 0 ? 0 : dailyAverage > 0 ? Math.ceil(remaining / dailyAverage) : null,
+  }
+}
+
 export const PLATFORM_KEYS: PlatformKey[] = ['uber', 'noventaenove', 'indrive']

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS, type Manutencao, type Registro } from '../types'
-import { aggregateRegistros, deriveRegistro, trendDelta } from './calculations'
+import {
+  aggregateRegistros,
+  calculateGoalProjection,
+  deriveRegistro,
+  trendDelta,
+} from './calculations'
 import { calculateCombustivelMetrics } from './fuel'
 import { evaluateManutencaoAlerta } from './maintenance'
 import { validateManutencao, validateRegistro } from './validation'
@@ -293,5 +298,20 @@ describe('tendência', () => {
     expect(trendDelta(120, 100)).toBeCloseTo(0.2)
     expect(trendDelta(0, 0)).toBe(0)
     expect(trendDelta(10, 0)).toBeNull()
+  })
+
+  describe('projeção da meta mensal', () => {
+    it('calcula saldo, média necessária por dia e previsão no ritmo atual', () => {
+      expect(calculateGoalProjection(600, 1200, 10, 20)).toEqual({
+        remaining: 600,
+        dailyRequired: 30,
+        daysToGoal: 10,
+      })
+    })
+
+    it('lida com meta atingida e com nenhum ganho registrado', () => {
+      expect(calculateGoalProjection(1200, 1200, 10, 20).daysToGoal).toBe(0)
+      expect(calculateGoalProjection(0, 1200, 0, 20).daysToGoal).toBeNull()
+    })
   })
 })
