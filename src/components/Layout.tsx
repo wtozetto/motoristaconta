@@ -1,11 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useDrive } from '../drive/DriveContext'
+import { DriveBadge } from './DriveBadge'
+import { useSyncTimer } from '../hooks/useSyncTimer'
 
 const LINKS = [
   { to: '/lancamentos', label: 'Lançamentos' },
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/manutencao', label: 'Manutenção' },
+  { to: '/lembretes', label: 'Lembretes' },
   { to: '/configuracoes', label: 'Configurações' },
 ]
 
@@ -32,55 +35,10 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
-function Spinner({ className = '' }: { className?: string }) {
-  return (
-    <span
-      className={`inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent ${className}`}
-      role="status"
-      aria-label="Sincronizando"
-    />
-  )
-}
-
-function badgeColor(status: string, message: string | null): string {
-  if (status === 'error') return 'text-rose-600 dark:text-rose-400'
-  if (status === 'syncing' || status === 'connecting') return 'text-blue-600 dark:text-blue-400'
-  if (status === 'ok' && message?.includes('Mesclagem')) return 'text-amber-600 dark:text-amber-400'
-  if (status === 'ok') return 'text-emerald-600 dark:text-emerald-400'
-  return 'text-slate-500'
-}
-
-function DriveBadge() {
-  const { status, message } = useDrive()
-
-  const isBusy = status === 'syncing' || status === 'connecting'
-
-  const label = isBusy
-    ? 'Sincronizando Drive…'
-    : status === 'ok' && message
-      ? message
-      : status === 'ok'
-        ? 'Drive sincronizado'
-        : status === 'error'
-          ? message || 'Drive desconectado'
-          : status === 'dev'
-            ? 'Drive (modo teste)'
-            : 'Drive'
-
-  return (
-    <p
-      className={`flex items-center gap-1.5 text-[11px] font-medium leading-tight transition-colors ${badgeColor(status, message)}`}
-      title={message ?? undefined}
-    >
-      {isBusy ? <Spinner /> : null}
-      {label}
-    </p>
-  )
-}
-
 export function Layout() {
   const { session, logout } = useAuth()
   const { isInitialSyncing } = useDrive()
+  useSyncTimer()
 
   if (isInitialSyncing) {
     return (
