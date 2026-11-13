@@ -5,6 +5,7 @@ import { useDrive } from '../drive/DriveContext'
 import { useTheme } from '../theme/ThemeContext'
 import {
   applyImport,
+  applyImportContasFixas,
   applyImportManutencoes,
   backupToJson,
   parseBackupJson,
@@ -18,7 +19,14 @@ import type { ThemePreference } from '../types'
 export function ConfigPage() {
   const { session, logout } = useAuth()
   const { settings, setTheme, updateSettings } = useTheme()
-  const { registros, manutencoes, importRegistros, importManutencoes } = useData()
+  const {
+    registros,
+    manutencoes,
+    contasFixas,
+    importRegistros,
+    importManutencoes,
+    importContasFixas,
+  } = useData()
   const { status, message: driveMessage, lastSyncAt, syncNow, reconnect } = useDrive()
   const fileRef = useRef<HTMLInputElement>(null)
   const [importMode, setImportMode] = useState<ImportMode | null>(null)
@@ -30,7 +38,7 @@ export function ConfigPage() {
   const [isSyncing, setIsSyncing] = useState(false)
 
   function exportJson() {
-    const json = backupToJson(registros, settings, manutencoes)
+    const json = backupToJson(registros, settings, manutencoes, undefined, undefined, undefined, contasFixas)
     downloadJsonBackup(`motoristaconta-${todayISO()}.json`, json)
   }
 
@@ -78,6 +86,20 @@ export function ConfigPage() {
               onChange={(e) => {
                 const n = Number(e.target.value)
                 updateSettings({ metaRsPorKm: Number.isFinite(n) && n >= 0 ? n : 0 })
+              }}
+            />
+          </label>
+          <label className="text-sm">
+            Meta mensal de ganhos (R$)
+            <input
+              type="number"
+              min={0}
+              step="0.01"
+              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 dark:border-slate-700 dark:bg-slate-950"
+              value={settings.metaMensal}
+              onChange={(e) => {
+                const amount = Number(e.target.value)
+                updateSettings({ metaMensal: Number.isFinite(amount) ? Math.max(0, amount) : 0 })
               }}
             />
           </label>
@@ -360,6 +382,15 @@ export function ConfigPage() {
             await importManutencoes(nextManutencoes, 'replace')
           }
 
+          if (pendingPayload.contasFixas) {
+            const nextContasFixas = applyImportContasFixas(
+              contasFixas,
+              pendingPayload.contasFixas,
+              importMode,
+            )
+            await importContasFixas(nextContasFixas, 'replace')
+          }
+
           if (pendingPayload.settings) {
             updateSettings(pendingPayload.settings)
           }
@@ -374,8 +405,9 @@ export function ConfigPage() {
         }}
       >
         <p>
-          Encontramos {pendingPayload?.registros.length ?? 0} lançamento(s) e{' '}
-          {pendingPayload?.manutencoes?.length ?? 0} registro(s) de manutenção no arquivo. Escolha
+          Encontramos {pendingPayload?.registros.length ?? 0} lançamento(s),{' '}
+          {pendingPayload?.manutencoes?.length ?? 0} registro(s) de manutenção e{' '}
+          {pendingPayload?.contasFixas?.length ?? 0} vencimento(s) no arquivo. Escolha
           mesclar (mantém os seus e atualiza registros coincidentes se o arquivo for mais novo) ou
           substituir (apaga os dados atuais).
         </p>

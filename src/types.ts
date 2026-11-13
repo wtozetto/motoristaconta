@@ -1,3 +1,26 @@
+export type SeguroSubcategoria = 'mensalidade' | 'franquia'
+
+export interface ContaFixa {
+  id: string
+  titulo: string
+  tipo: 'seguro' | 'ipva' | 'licenciamento' | 'parcelas' | 'troca_oleo' | 'revisao' | 'outros'
+  valor: number
+  dataVencimento: string
+  observacao: string
+  status: 'pendente' | 'pago'
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export interface ContaFixaInput {
+  titulo: string
+  tipo: ContaFixa['tipo']
+  valor: number
+  dataVencimento: string
+  observacao?: string
+  status: ContaFixa['status']
+}
+
 export type PlatformKey = 'uber' | 'noventaenove' | 'indrive'
 
 export type PlatformFilter = 'todas' | PlatformKey
@@ -158,6 +181,7 @@ export interface BackupPayload {
   settings: AppSettings
   registros: Registro[]
   manutencoes?: Manutencao[]
+  contasFixas?: ContaFixa[]
 }
 
 export const PLATFORM_LABEL: Record<PlatformKey, string> = {

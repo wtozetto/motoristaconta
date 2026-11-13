@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS,
   type AppSettings,
   type BackupPayload,
+  type ContaFixa,
   type CombustivelData,
   type CombustivelItem,
   type Manutencao,
@@ -15,6 +16,7 @@ export type ImportMode = 'merge' | 'replace'
 export function getLatestRecordStamp(data: {
   registros?: Registro[]
   manutencoes?: Manutencao[]
+  contasFixas?: ContaFixa[]
 }): string {
   let max = ''
   if (data.registros) {
@@ -27,6 +29,11 @@ export function getLatestRecordStamp(data: {
       if (m.atualizadoEm && m.atualizadoEm > max) max = m.atualizadoEm
     }
   }
+  if (data.contasFixas) {
+    for (const conta of data.contasFixas) {
+      if (conta.atualizadoEm && conta.atualizadoEm > max) max = conta.atualizadoEm
+    }
+  }
   return max
 }
 
@@ -37,6 +44,7 @@ export function serializeBackup(
   exportedAtArg?: string,
   ultimaModificacao?: string,
   ultimaSincronizacao?: string,
+  contasFixas: ContaFixa[] = [],
 ): BackupPayload {
   let manutencoes: Manutencao[] = []
   let exportedAt = new Date().toISOString()
@@ -50,7 +58,7 @@ export function serializeBackup(
     exportedAt = exportedAtArg
   }
 
-  const recStamp = getLatestRecordStamp({ registros, manutencoes })
+  const recStamp = getLatestRecordStamp({ registros, manutencoes, contasFixas })
   const modStamp = ultimaModificacao || recStamp || exportedAt
 
   return {
@@ -63,6 +71,7 @@ export function serializeBackup(
     settings,
     registros: structuredClone(registros),
     manutencoes: structuredClone(manutencoes),
+    contasFixas: structuredClone(contasFixas),
   }
 }
 
@@ -73,6 +82,7 @@ export function backupToJson(
   exportedAt?: string,
   ultimaModificacao?: string,
   ultimaSincronizacao?: string,
+  contasFixas: ContaFixa[] = [],
 ): string {
   return JSON.stringify(
     serializeBackup(
@@ -82,6 +92,7 @@ export function backupToJson(
       exportedAt,
       ultimaModificacao,
       ultimaSincronizacao,
+      contasFixas,
     ),
     null,
     2,
@@ -100,6 +111,9 @@ export function parseBackupJson(raw: string): BackupPayload {
   const registros = data.registros.map(normalizeRegistro)
   const manutencoes = Array.isArray(data.manutencoes)
     ? data.manutencoes.map(normalizeManutencao)
+    : []
+  const contasFixas = Array.isArray(data.contasFixas)
+    ? data.contasFixas.map(normalizeContaFixa)
     : []
   const settings: AppSettings = normalizeSettings(data.settings)
   const exportedAt =
@@ -127,6 +141,7 @@ export function parseBackupJson(raw: string): BackupPayload {
     settings,
     registros,
     manutencoes,
+    contasFixas,
   }
 }
 
@@ -147,6 +162,12 @@ function normalizeSettings(raw: unknown): AppSettings {
         : DEFAULT_SETTINGS.theme,
     alertaManutencaoDias: Math.max(1, Math.round(num(parsed.alertaManutencaoDias, DEFAULT_SETTINGS.alertaManutencaoDias))),
     alertaManutencaoKm: Math.max(0, Math.round(num(parsed.alertaManutencaoKm, DEFAULT_SETTINGS.alertaManutencaoKm))),
+    metaMensal: Math.max(0, num(parsed.metaMensal, DEFAULT_SETTINGS.metaMensal)),
+    lembreteRegistroDiario:
+      typeof parsed.lembreteRegistroDiario === 'boolean'
+        ? parsed.lembreteRegistroDiario
+        : DEFAULT_SETTINGS.lembreteRegistroDiario,
+    gastosFixosMensais: Math.max(0, num(parsed.gastosFixosMensais, DEFAULT_SETTINGS.gastosFixosMensais)),
   }
 }
 export function normalizeRegistro(item: unknown, index = 0): Registro {
@@ -230,6 +251,10 @@ export function normalizeManutencao(item: unknown, index = 0): Manutencao {
     id: String(m.id ?? crypto.randomUUID()),
     data: String(m.data ?? ''),
     categoria: String(m.categoria ?? 'Outros'),
+    seguroSubcategoria:
+      m.seguroSubcategoria === 'mensalidade' || m.seguroSubcategoria === 'franquia'
+        ? m.seguroSubcategoria
+        : undefined,
     descricao: String(m.descricao ?? ''),
     valor: Math.max(0, num(m.valor)),
     kmRealizacao: Math.max(0, num(m.kmRealizacao)),
@@ -243,6 +268,45 @@ export function normalizeManutencao(item: unknown, index = 0): Manutencao {
     status: m.status === 'programado' ? 'programado' : 'concluido',
     criadoEm: String(m.criadoEm ?? new Date().toISOString()),
     atualizadoEm: String(m.atualizadoEm ?? new Date().toISOString()),
+  }
+}
+
+function normalizeContaFixa(item: unknown, index = 0): ContaFixa {
+  if (!item || typeof item !== 'object') {
+    throw new Error(`Vencimento inválido na posição ${index + 1}.`)
+  }
+  const conta = item as Partial<ContaFixa>
+  const value = Number(conta.valor ?? 0)
+  const titulo = String(conta.titulo ?? '').trim()
+  const dataVencimento = String(conta.dataVencimento ?? '')
+  const validTypes: ContaFixa['tipo'][] = [
+    'seguro',
+    'ipva',
+    'licenciamento',
+    'parcelas',
+    'troca_oleo',
+    'revisao',
+    'outros',
+  ]
+  const parsedDate = new Date(`${dataVencimento}T00:00:00Z`)
+  if (!titulo) throw new Error(`Título inválido no vencimento ${index + 1}.`)
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(dataVencimento) ||
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.toISOString().slice(0, 10) !== dataVencimento
+  ) {
+    throw new Error(`Data inválida no vencimento ${index + 1}.`)
+  }
+  return {
+    id: String(conta.id ?? crypto.randomUUID()),
+    titulo,
+    tipo: validTypes.includes(conta.tipo ?? 'outros') ? conta.tipo ?? 'outros' : 'outros',
+    valor: Number.isFinite(value) ? Math.max(0, value) : 0,
+    dataVencimento,
+    observacao: String(conta.observacao ?? ''),
+    status: conta.status === 'pago' ? 'pago' : 'pendente',
+    criadoEm: String(conta.criadoEm ?? new Date().toISOString()),
+    atualizadoEm: String(conta.atualizadoEm ?? new Date().toISOString()),
   }
 }
 
@@ -280,4 +344,20 @@ export function applyImportManutencoes(
     }
   }
   return [...map.values()].sort((a, b) => b.data.localeCompare(a.data))
+}
+
+export function applyImportContasFixas(
+  existing: ContaFixa[],
+  incoming: ContaFixa[],
+  mode: ImportMode,
+): ContaFixa[] {
+  if (mode === 'replace') return incoming.map((conta) => ({ ...conta }))
+  const map = new Map(existing.map((conta) => [conta.id, conta]))
+  for (const conta of incoming) {
+    const previous = map.get(conta.id)
+    if (!previous || conta.atualizadoEm >= previous.atualizadoEm) {
+      map.set(conta.id, { ...conta })
+    }
+  }
+  return [...map.values()].sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
 }

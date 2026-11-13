@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, type BackupPayload, type Registro } from '../types'
+import { DEFAULT_SETTINGS, type BackupPayload, type ContaFixa, type Registro } from '../types'
 import { compararESincronizar } from './conflict'
 
 const registro = (id: string, at: string): Registro => ({
@@ -13,6 +13,18 @@ const registro = (id: string, at: string): Registro => ({
   observacoes: '',
   atualizadoEm: at,
 })
+
+const conta: ContaFixa = {
+  id: 'bill',
+  titulo: 'IPVA',
+  tipo: 'ipva',
+  valor: 400,
+  dataVencimento: '2026-12-01',
+  observacao: '',
+  status: 'pendente',
+  criadoEm: '2026-10-01T00:00:00.000Z',
+  atualizadoEm: '2026-10-01T00:00:00.000Z',
+}
 
 function payload(
   rows: Registro[],
@@ -133,5 +145,14 @@ describe('compararESincronizar', () => {
     const result = compararESincronizar(local, remote, now)
     expect(result.mergedRegistros).toHaveLength(1)
     expect(result.mergedRegistros[0].atualizadoEm).toBe('2026-10-09T12:00:00.000Z')
+  })
+
+  it('sincroniza vencimentos mesmo sem registros ou manutenções', () => {
+    const local = { ...payload([], now), contasFixas: [conta] }
+    const remote = { ...payload([], now), contasFixas: [] }
+    const result = compararESincronizar(local, remote, now)
+    expect(result.action).toBe('local-applied')
+    expect(result.needsRemoteUpload).toBe(true)
+    expect(result.mergedContasFixas).toEqual([conta])
   })
 })

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_SETTINGS, type Manutencao, type Registro } from '../types'
+import { DEFAULT_SETTINGS, type ContaFixa, type Manutencao, type Registro } from '../types'
 import {
   applyImport,
+  applyImportContasFixas,
   applyImportManutencoes,
   backupToJson,
   parseBackupJson,
@@ -42,6 +43,18 @@ const manutencaoExemplo: Manutencao = {
   atualizadoEm: '2026-10-01T10:00:00.000Z',
 }
 
+const contaExemplo: ContaFixa = {
+  id: 'c1',
+  titulo: 'Seguro do carro',
+  tipo: 'seguro',
+  valor: 250,
+  dataVencimento: '2026-10-25',
+  observacao: 'Parcela mensal',
+  status: 'pendente',
+  criadoEm: '2026-10-01T10:00:00.000Z',
+  atualizadoEm: '2026-10-01T10:00:00.000Z',
+}
+
 describe('JSON import/export', () => {
   it('preserva integridade no roundtrip com schema v2 e manutenções', () => {
     const json = backupToJson(
@@ -56,6 +69,14 @@ describe('JSON import/export', () => {
     expect(parsed.settings.reservaPercent).toBe(15)
     expect(parsed.app).toBe('MotoristaConta')
     expect(JSON.parse(json).version).toBe(2)
+  })
+
+  it('preserva vencimentos e metas mensais no backup', () => {
+    const settings = { ...DEFAULT_SETTINGS, metaMensal: 12000 }
+    const json = backupToJson([older], settings, [manutencaoExemplo], undefined, undefined, undefined, [contaExemplo])
+    const parsed = parseBackupJson(json)
+    expect(parsed.contasFixas).toEqual([contaExemplo])
+    expect(parsed.settings.metaMensal).toBe(12000)
   })
 
   it('migra retrocompativelmente registros antigos com combustivel numérico', () => {
@@ -131,6 +152,12 @@ describe('JSON import/export', () => {
     const mExtra: Manutencao = { ...manutencaoExemplo, id: 'm2' }
     const replaced = applyImportManutencoes([manutencaoExemplo], [mExtra], 'replace')
     expect(replaced).toEqual([mExtra])
+  })
+
+  it('mescla vencimentos pelo timestamp mais recente', () => {
+    const updated = { ...contaExemplo, status: 'pago' as const, atualizadoEm: '2026-10-02T10:00:00.000Z' }
+    expect(applyImportContasFixas([contaExemplo], [updated], 'merge')[0].status).toBe('pago')
+    expect(applyImportContasFixas([contaExemplo], [updated], 'replace')).toEqual([updated])
   })
 
   it('não quebra com ganhos nulos ou malformados no JSON', () => {

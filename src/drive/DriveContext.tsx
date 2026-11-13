@@ -46,7 +46,15 @@ const DEBOUNCE_MS = 2000
 
 export function DriveProvider({ children }: { children: ReactNode }) {
   const { session, ensureDriveToken } = useAuth()
-  const { registros, manutencoes, loading, importRegistros, importManutencoes } = useData()
+  const {
+    registros,
+    manutencoes,
+    contasFixas,
+    loading,
+    importRegistros,
+    importManutencoes,
+    importContasFixas,
+  } = useData()
   const { settings, updateSettings } = useTheme()
   const [status, setStatus] = useState<DriveStatus>('idle')
   const [message, setMessage] = useState<string | null>(null)
@@ -79,6 +87,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       nextSettings = settings,
       nextModificacao = getLocalModificacaoStamp(),
       nextSincronizacao = new Date().toISOString(),
+      nextContasFixas = contasFixas,
     ) => {
       if (!session) return
       const payload = serializeBackup(
@@ -88,6 +97,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         undefined,
         nextModificacao,
         nextSincronizacao,
+        nextContasFixas,
       )
       const ids = loadDriveFileIds(session.googleId)
       const file = await upsertJsonFile(
@@ -101,7 +111,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       setLastSyncAt(nextSincronizacao)
       setStatus('ok')
     },
-    [manutencoes, persistIds, registros, session, settings],
+    [contasFixas, manutencoes, persistIds, registros, session, settings],
   )
 
   const writeAccessLog = useCallback(
@@ -181,6 +191,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         now,
         localMod,
         localSync,
+        contasFixas,
       )
 
       // Compara e resolve a precedência e mesclagem registro a registro
@@ -188,15 +199,18 @@ export function DriveProvider({ children }: { children: ReactNode }) {
 
       let nextRegistros = registros
       let nextManutencoes = manutencoes
+      let nextContasFixas = contasFixas
       let nextSettings = settings
 
       if (syncResult.needsLocalUpdate) {
         skipNextRef.current = true
         nextRegistros = syncResult.mergedRegistros
         nextManutencoes = syncResult.mergedManutencoes
+        nextContasFixas = syncResult.mergedContasFixas
         nextSettings = syncResult.mergedPayload.settings
         await importRegistros(nextRegistros, 'replace')
         await importManutencoes(nextManutencoes, 'replace')
+        await importContasFixas(nextContasFixas, 'replace')
         if (syncResult.mergedPayload.settings) {
           updateSettings(syncResult.mergedPayload.settings)
         }
@@ -213,6 +227,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           nextSettings,
           syncResult.mergedPayload.ultimaModificacao,
           syncResult.mergedPayload.ultimaSincronizacao,
+          nextContasFixas,
         )
       }
 
@@ -236,9 +251,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   }, [
     ensureDriveToken,
     importManutencoes,
+    importContasFixas,
     importRegistros,
     isDevBypass,
     manutencoes,
+    contasFixas,
     persistIds,
     registros,
     session,
@@ -279,6 +296,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
             settings,
             getLocalModificacaoStamp() || now,
             now,
+            contasFixas,
           )
           setMessage('Sincronizado — dados locais estão mais atualizados, enviados ao Google Drive')
         } catch (err) {
@@ -295,6 +313,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
     isDevBypass,
     loading,
     manutencoes,
+    contasFixas,
     registros,
     settings,
     uploadPayload,
@@ -333,21 +352,25 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         now,
         localMod,
         localSync,
+        contasFixas,
       )
 
       const syncResult = compararESincronizar(localPayload, remote, now)
 
       let nextRegistros = registros
       let nextManutencoes = manutencoes
+      let nextContasFixas = contasFixas
       let nextSettings = settings
 
       if (syncResult.needsLocalUpdate) {
         skipNextRef.current = true
         nextRegistros = syncResult.mergedRegistros
         nextManutencoes = syncResult.mergedManutencoes
+        nextContasFixas = syncResult.mergedContasFixas
         nextSettings = syncResult.mergedPayload.settings
         await importRegistros(nextRegistros, 'replace')
         await importManutencoes(nextManutencoes, 'replace')
+        await importContasFixas(nextContasFixas, 'replace')
         if (syncResult.mergedPayload.settings) {
           updateSettings(syncResult.mergedPayload.settings)
         }
@@ -364,6 +387,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
           nextSettings,
           syncResult.mergedPayload.ultimaModificacao,
           syncResult.mergedPayload.ultimaSincronizacao,
+          nextContasFixas,
         )
       }
 
@@ -378,9 +402,11 @@ export function DriveProvider({ children }: { children: ReactNode }) {
   }, [
     ensureDriveToken,
     importManutencoes,
+    importContasFixas,
     importRegistros,
     isDevBypass,
     manutencoes,
+    contasFixas,
     persistIds,
     registros,
     session,

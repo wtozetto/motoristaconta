@@ -9,6 +9,7 @@ import { ConfigPage } from './pages/ConfigPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LancamentosPage } from './pages/LancamentosPage'
 import { LoginPage } from './pages/LoginPage'
+import { LembretesPage } from './pages/LembretesPage'
 import { ManutencaoPage } from './pages/ManutencaoPage'
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/lancamentos" element={<LancamentosPage />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/manutencao" element={<ManutencaoPage />} />
+              <Route path="/lembretes" element={<LembretesPage />} />
               <Route path="/configuracoes" element={<ConfigPage />} />
             </Route>
             <Route path="/" element={<Navigate to="/lancamentos" replace />} />

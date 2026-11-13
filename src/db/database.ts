@@ -1,9 +1,10 @@
 import Dexie, { type Table } from 'dexie'
-import type { Manutencao, Registro } from '../types'
+import type { ContaFixa, Manutencao, Registro } from '../types'
 
 export class MotoristaDB extends Dexie {
   registros!: Table<Registro, string>
   manutencoes!: Table<Manutencao, string>
+  contasFixas!: Table<ContaFixa, string>
 
   constructor() {
     super('MotoristaConta')
@@ -13,6 +14,11 @@ export class MotoristaDB extends Dexie {
     this.version(2).stores({
       registros: 'id, data, atualizadoEm',
       manutencoes: 'id, data, status, atualizadoEm',
+    })
+    this.version(3).stores({
+      registros: 'id, data, atualizadoEm',
+      manutencoes: 'id, data, status, atualizadoEm',
+      contasFixas: 'id, dataVencimento, status, atualizadoEm',
     })
   }
 }
@@ -95,4 +101,33 @@ export async function mergeManutencoes(incoming: Manutencao[]): Promise<void> {
       await db.manutencoes.bulkPut(next)
     }
   })
+}
+
+export async function listContasFixas(): Promise<ContaFixa[]> {
+  return db.contasFixas.orderBy('dataVencimento').toArray()
+}
+
+export async function upsertContaFixa(conta: ContaFixa): Promise<void> {
+  await db.contasFixas.put(conta)
+}
+
+export async function deleteContaFixa(id: string): Promise<void> {
+  await db.contasFixas.delete(id)
+}
+
+export async function replaceAllContasFixas(contas: ContaFixa[]): Promise<void> {
+  await db.transaction('rw', db.contasFixas, async () => {
+    await db.contasFixas.clear()
+    if (contas.length > 0) await db.contasFixas.bulkPut(contas)
+  })
+}
+
+export async function mergeContasFixas(incoming: ContaFixa[]): Promise<void> {
+  const existing = await db.contasFixas.toArray()
+  const map = new Map(existing.map((conta) => [conta.id, conta]))
+  for (const conta of incoming) {
+    const previous = map.get(conta.id)
+    if (!previous || conta.atualizadoEm >= previous.atualizadoEm) map.set(conta.id, conta)
+  }
+  await replaceAllContasFixas([...map.values()])
 }

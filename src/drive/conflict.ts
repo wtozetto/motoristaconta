@@ -1,6 +1,7 @@
 import {
   BACKUP_VERSION,
   type BackupPayload,
+  type ContaFixa,
   type Manutencao,
   type Registro,
 } from '../types'
@@ -21,6 +22,7 @@ export interface SyncComparisonResult {
   needsRemoteUpload: boolean
   mergedRegistros: Registro[]
   mergedManutencoes: Manutencao[]
+  mergedContasFixas: ContaFixa[]
 }
 
 export function getModificacaoStamp(payload: BackupPayload | null): string {
@@ -44,9 +46,12 @@ export function compararESincronizar(
   remoto: BackupPayload | null,
   now = new Date().toISOString(),
 ): SyncComparisonResult {
-  const localCount = local.registros.length + (local.manutencoes?.length ?? 0)
+  const localCount =
+    local.registros.length + (local.manutencoes?.length ?? 0) + (local.contasFixas?.length ?? 0)
   const remoteCount =
-    (remoto?.registros.length ?? 0) + (remoto?.manutencoes?.length ?? 0)
+    (remoto?.registros.length ?? 0) +
+    (remoto?.manutencoes?.length ?? 0) +
+    (remoto?.contasFixas?.length ?? 0)
 
   // Caso 1: Ambos vazios
   if (localCount === 0 && (!remoto || remoteCount === 0)) {
@@ -61,6 +66,7 @@ export function compararESincronizar(
       needsRemoteUpload: false,
       mergedRegistros: local.registros,
       mergedManutencoes: local.manutencoes ?? [],
+      mergedContasFixas: local.contasFixas ?? [],
     }
   }
 
@@ -81,6 +87,7 @@ export function compararESincronizar(
       needsRemoteUpload: true,
       mergedRegistros: local.registros,
       mergedManutencoes: local.manutencoes ?? [],
+      mergedContasFixas: local.contasFixas ?? [],
     }
   }
 
@@ -100,6 +107,7 @@ export function compararESincronizar(
       needsRemoteUpload: false,
       mergedRegistros: remoto.registros,
       mergedManutencoes: remoto.manutencoes ?? [],
+      mergedContasFixas: remoto.contasFixas ?? [],
     }
   }
 
@@ -168,6 +176,34 @@ export function compararESincronizar(
   }
   mergedManutencoes.sort((a, b) => b.data.localeCompare(a.data))
 
+  const localContaMap = new Map((local.contasFixas ?? []).map((conta) => [conta.id, conta]))
+  const remoteContaMap = new Map((remoto.contasFixas ?? []).map((conta) => [conta.id, conta]))
+  const allContaIds = new Set([...localContaMap.keys(), ...remoteContaMap.keys()])
+  const mergedContasFixas: ContaFixa[] = []
+
+  for (const id of allContaIds) {
+    const loc = localContaMap.get(id)
+    const rem = remoteContaMap.get(id)
+    if (loc && !rem) {
+      mergedContasFixas.push(loc)
+      localHasNewer = true
+    } else if (rem && !loc) {
+      mergedContasFixas.push(rem)
+      remoteHasNewer = true
+    } else if (loc && rem) {
+      if (loc.atualizadoEm > rem.atualizadoEm) {
+        mergedContasFixas.push(loc)
+        localHasNewer = true
+      } else if (rem.atualizadoEm > loc.atualizadoEm) {
+        mergedContasFixas.push(rem)
+        remoteHasNewer = true
+      } else {
+        mergedContasFixas.push(loc)
+      }
+    }
+  }
+  mergedContasFixas.sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento))
+
   // Mesclagem de Configurações
   const localMod = getModificacaoStamp(local)
   const remoteMod = getModificacaoStamp(remoto)
@@ -209,6 +245,7 @@ export function compararESincronizar(
       settings: mergedSettings,
       registros: mergedRegistros,
       manutencoes: mergedManutencoes,
+      contasFixas: mergedContasFixas,
     }
     return {
       action: 'merged',
@@ -218,6 +255,7 @@ export function compararESincronizar(
       needsRemoteUpload: true,
       mergedRegistros,
       mergedManutencoes,
+      mergedContasFixas,
     }
   }
 
@@ -232,6 +270,7 @@ export function compararESincronizar(
       settings: mergedSettings,
       registros: mergedRegistros,
       manutencoes: mergedManutencoes,
+      contasFixas: mergedContasFixas,
     }
     return {
       action: 'remote-applied',
@@ -241,6 +280,7 @@ export function compararESincronizar(
       needsRemoteUpload: false,
       mergedRegistros,
       mergedManutencoes,
+      mergedContasFixas,
     }
   }
 
@@ -255,6 +295,7 @@ export function compararESincronizar(
       settings: mergedSettings,
       registros: mergedRegistros,
       manutencoes: mergedManutencoes,
+      contasFixas: mergedContasFixas,
     }
     return {
       action: 'local-applied',
@@ -264,6 +305,7 @@ export function compararESincronizar(
       needsRemoteUpload: true,
       mergedRegistros,
       mergedManutencoes,
+      mergedContasFixas,
     }
   }
 
@@ -276,6 +318,7 @@ export function compararESincronizar(
     ultimaSincronizacao: now,
     registros: mergedRegistros,
     manutencoes: mergedManutencoes,
+    contasFixas: mergedContasFixas,
   }
   return {
     action: 'up-to-date',
@@ -285,5 +328,6 @@ export function compararESincronizar(
     needsRemoteUpload: false,
     mergedRegistros,
     mergedManutencoes,
+    mergedContasFixas,
   }
 }
