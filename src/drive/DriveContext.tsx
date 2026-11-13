@@ -21,6 +21,7 @@ import {
   upsertJsonFile,
 } from './api'
 import { compararESincronizar } from './conflict'
+import { googleDriveProvider } from './googleDriveProvider'
 import { loadDriveFileIds, saveDriveFileIds } from './fileIds'
 import {
   getLocalModificacaoStamp,
@@ -107,7 +108,7 @@ export function DriveProvider({ children }: { children: ReactNode }) {
         nextCategoriasStamp,
       )
       const ids = loadDriveFileIds(session.googleId)
-      const file = await upsertJsonFile(
+      const file = await googleDriveProvider.writeFile(
         accessToken,
         DADOS_FILE_NAME,
         JSON.stringify(payload, null, 2),
@@ -175,13 +176,13 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       let remoteRaw: string | null = null
       let dadosId = ids.dadosId
       if (!dadosId) {
-        const found = await findFileByName(accessToken, DADOS_FILE_NAME)
+        const found = await googleDriveProvider.findFile(accessToken, DADOS_FILE_NAME)
         dadosId = found?.id
         if (dadosId) persistIds({ dadosId })
       }
       if (dadosId) {
         try {
-          remoteRaw = await downloadFileText(accessToken, dadosId)
+          remoteRaw = await googleDriveProvider.readFile(accessToken, dadosId)
         } catch {
           dadosId = undefined
         }
@@ -355,13 +356,13 @@ export function DriveProvider({ children }: { children: ReactNode }) {
       let remoteRaw: string | null = null
       let dadosId = ids.dadosId
       if (!dadosId) {
-        const found = await findFileByName(accessToken, DADOS_FILE_NAME)
+        const found = await googleDriveProvider.findFile(accessToken, DADOS_FILE_NAME)
         dadosId = found?.id
         if (dadosId) persistIds({ dadosId })
       }
       if (dadosId) {
         try {
-          remoteRaw = await downloadFileText(accessToken, dadosId)
+          remoteRaw = await googleDriveProvider.readFile(accessToken, dadosId)
         } catch {
           dadosId = undefined
         }
