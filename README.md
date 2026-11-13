@@ -3,7 +3,9 @@
 SPA estática para motoristas de Uber, 99 e Indrive acompanharem ganhos, km, gastos e lucro.
 
 - **100% no navegador.** IndexedDB (Dexie) + LocalStorage. Sem backend, sem funções serverless, sem banco remoto.
-- **Google Drive automático:** no login o app pede permissão `drive.file` e grava `MotoristaConta-dados.json` na **sua** conta. Também anexa acessos em `MotoristaConta-acessos.json`. Exportar JSON/CSV no aparelho continua disponível.
+- **Google Drive automático:** sincroniza no login, após alterações e a cada 5 minutos. Lançamentos, manutenções, vencimentos e preferências são salvos em `MotoristaConta-dados.json` na **sua** conta. Também anexa acessos em `MotoristaConta-acessos.json`. Exportar JSON/CSV no aparelho continua disponível.
+- **Dashboard resumido:** mostra ganhos e km do dia, resultados mensais e anuais, progresso da meta e próximos vencimentos.
+- **Lembretes:** contas do veículo com data, valor e status de pagamento, ordenadas por vencimento.
 - **PWA:** instalável e usable offline depois do primeiro carregamento (app em cache + dados locais).
 
 ## Como rodar localmente
@@ -70,8 +72,8 @@ Se a CLI / conta Vercel não estiver logada, o projeto já está pronto: `vercel
 ## Backup no Google Drive (automático)
 
 1. Entre com Google. O navegador pede permissão para criar arquivos no Drive.
-2. O app cria/atualiza `MotoristaConta-dados.json` (lançamentos + manutenções + preferências) e `MotoristaConta-acessos.json` (log de entrada).
-3. Depois de cada salvamento, espera ~2 segundos e envia de novo.
+2. O app cria/atualiza `MotoristaConta-dados.json` (lançamentos, manutenções, vencimentos e preferências) e `MotoristaConta-acessos.json` (log de entrada).
+3. Sincroniza após alterações locais, espera ~2 segundos para agrupar salvamentos e também verifica o Drive a cada 5 minutos.
 4. Se o IndexedDB estiver vazio e o Drive tiver backup, restaura. Se os dois tiverem dados, a **Sincronização Inteligente** resolve qual versão prevalece.
 5. Em **Configurações**: **Sincronizar agora** ou **Reconectar Drive** se o token expirar.
 
@@ -113,11 +115,20 @@ Quando ambos os lados possuem dados, a sincronização **não** substitui todo o
 
 | Cor | Mensagem | Significado |
 | --- | --- | --- |
-| ✅ Verde | *Sincronizado — dados locais estão mais atualizados, enviados ao Google Drive* | Dados locais prevaleceram. |
-| ✅ Verde | *Sincronizado — versão mais recente do Google Drive aplicada* | Dados do Drive prevaleceram. |
-| ⚠️ Amarelo | *Mesclagem realizada — existiam alterações nos dois lados* | Houve merge bidirecional. |
-| ✅ Verde | *Sistema já está atualizado* | Nenhuma diferença encontrada. |
-| 🔴 Vermelho | Mensagem de erro | Falha na conexão ou operação. |
+| ⏳ Azul | *Sincronizando* | Comparando e aplicando alterações. |
+| ⬆️ Azul | *Atualizado localmente* | Dados locais foram enviados ao Drive. |
+| ⬇️ Violeta | *Atualizado pelo Drive* | Dados mais recentes da nuvem foram aplicados. |
+| 🔄 Amarelo | *Dados mesclados* | Alterações dos dois lados foram combinadas. |
+| ✅ Verde | *Ocioso · sincronizado* | Nenhuma sincronização está em andamento. |
+| ⚠️ Vermelho | Mensagem de erro | Falha na conexão ou operação. |
+
+## Dashboard, lembretes e seguro
+
+O **Dashboard** resume ganhos e quilômetros de hoje, ganhos e gastos do mês (incluindo combustível e manutenções concluídas) e totais do ano. Em **Configurações**, defina a meta mensal de ganhos; o dashboard mostra o percentual concluído, o valor restante e a média necessária por dia restante no mês.
+
+Em **Lembretes**, cadastre vencimentos de seguro, IPVA, licenciamento, parcelas, troca de óleo, revisão ou outros itens. Cada registro aceita título, tipo, valor, data, observação e status pendente/pago. Os alertas indicam quando vence, vence hoje ou há quantos dias está vencido. O dashboard lista os lembretes próximos e as próximas manutenções.
+
+Em **Manutenção**, a categoria **🚗 Seguro** permite classificar o lançamento como mensalidade ou franquia. Essa categoria também aparece nos filtros e totais por categoria.
 
 ### Migração de backups existentes
 
@@ -136,18 +147,19 @@ O script busca `MotoristaConta-dados.json` no Drive, insere `ultimaModificacao =
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "app": "MotoristaConta",
   "exportedAt": "2026-10-14T16:00:00.000Z",
   "ultimaModificacao": "2026-10-14T20:15:00.000Z",
   "ultimaSincronizacao": "2026-10-14T20:16:00.000Z",
-  "versaoSchema": 1,
+  "versaoSchema": 2,
   "settings": {
     "metaRsPorKm": 2.5,
     "reservaPercent": 15,
     "theme": "system",
     "alertaManutencaoDias": 30,
-    "alertaManutencaoKm": 500
+    "alertaManutencaoKm": 500,
+    "metaMensal": 0
   },
   "registros": [
     {
@@ -168,8 +180,23 @@ O script busca `MotoristaConta-dados.json` no Drive, insere `ultimaModificacao =
       "data": "2026-10-10",
       "categoria": "troca_oleo",
       "descricao": "Troca de óleo 5W-30 sintético",
-      "custo": 180,
-      "kmNaRealizacao": 50000,
+      "valor": 180,
+      "kmRealizacao": 50000,
+      "status": "concluido",
+      "criadoEm": "2026-10-10T14:00:00.000Z",
+      "atualizadoEm": "2026-10-10T14:00:00.000Z"
+    }
+  ],
+  "contasFixas": [
+    {
+      "id": "uuid",
+      "titulo": "Seguro do carro",
+      "tipo": "seguro",
+      "valor": 250,
+      "dataVencimento": "2026-10-25",
+      "observacao": "Parcela mensal",
+      "status": "pendente",
+      "criadoEm": "2026-10-10T14:00:00.000Z",
       "atualizadoEm": "2026-10-10T14:00:00.000Z"
     }
   ]
