@@ -15,6 +15,7 @@ import {
   type Manutencao,
   type ManutencaoInput,
   type ManutencaoStatus,
+  type SeguroSubcategoria,
 } from '../types'
 
 const emptyManutencaoInput = (kmAtual = 0): ManutencaoInput => ({
@@ -321,6 +322,11 @@ export function ManutencaoPage() {
                       <span className="font-semibold text-slate-900 dark:text-white block">
                         {m.categoria}
                       </span>
+                      {m.categoria === 'Seguro' && m.seguroSubcategoria ? (
+                        <span className="text-[11px] text-slate-500">
+                          {m.seguroSubcategoria === 'franquia' ? 'Franquia' : 'Mensalidade'}
+                        </span>
+                      ) : null}
                       <span className="text-xs text-slate-500 line-clamp-1">{m.descricao}</span>
                       {m.oficina ? (
                         <span className="text-[11px] text-slate-400 block">Oficina: {m.oficina}</span>
@@ -417,6 +423,7 @@ function ManutencaoForm({ editing, kmAtual, onCancel, onSubmit }: ManutencaoForm
       ? {
           data: editing.data,
           categoria: editing.categoria,
+          seguroSubcategoria: editing.seguroSubcategoria,
           descricao: editing.descricao,
           valor: editing.valor,
           kmRealizacao: editing.kmRealizacao,
@@ -448,6 +455,7 @@ function ManutencaoForm({ editing, kmAtual, onCancel, onSubmit }: ManutencaoForm
     const payload: ManutencaoInput = {
       ...form,
       categoria: finalCategory,
+      seguroSubcategoria: finalCategory === 'Seguro' ? form.seguroSubcategoria ?? 'mensalidade' : undefined,
       proximaData: form.proximaData?.trim() || undefined,
       proximaKm:
         form.proximaKm !== undefined && form.proximaKm !== null && !isNaN(Number(form.proximaKm))
@@ -537,18 +545,41 @@ function ManutencaoForm({ editing, kmAtual, onCancel, onSubmit }: ManutencaoForm
                 setIsCustomCategory(true)
               } else {
                 setIsCustomCategory(false)
-                setForm((f) => ({ ...f, categoria: e.target.value }))
+                setForm((f) => ({
+                  ...f,
+                  categoria: e.target.value,
+                  seguroSubcategoria: e.target.value === 'Seguro' ? f.seguroSubcategoria ?? 'mensalidade' : undefined,
+                }))
               }
             }}
             className="h-11 rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
           >
             {MANUTENCAO_CATEGORIAS.map((cat) => (
               <option key={cat} value={cat}>
-                {cat}
+                {cat === 'Seguro' ? '🚗 Seguro' : cat}
               </option>
             ))}
             <option value="OUTROS_CUSTOM">Outra categoria personalizada…</option>
           </select>
+          {form.categoria === 'Seguro' && !isCustomCategory ? (
+            <label htmlFor="m-seguro-subcategoria" className="mt-2 text-sm font-medium">
+              Tipo de seguro
+              <select
+                id="m-seguro-subcategoria"
+                value={form.seguroSubcategoria ?? 'mensalidade'}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    seguroSubcategoria: e.target.value as SeguroSubcategoria,
+                  }))
+                }
+                className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900"
+              >
+                <option value="mensalidade">Mensalidade</option>
+                <option value="franquia">Franquia</option>
+              </select>
+            </label>
+          ) : null}
           {isCustomCategory ? (
             <input
               type="text"

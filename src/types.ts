@@ -91,6 +91,7 @@ export const MANUTENCAO_CATEGORIAS = [
   'Velas/ignição',
   'Ar-condicionado',
   'Revisão geral',
+  'Seguro',
   'Outros',
 ] as const
 
@@ -102,6 +103,7 @@ export interface Manutencao {
   id: string
   data: string
   categoria: ManutencaoCategoria
+  seguroSubcategoria?: SeguroSubcategoria
   descricao: string
   valor: number
   kmRealizacao: number
@@ -117,6 +119,7 @@ export interface Manutencao {
 export interface ManutencaoInput {
   data: string
   categoria: ManutencaoCategoria
+  seguroSubcategoria?: SeguroSubcategoria
   descricao: string
   valor: number
   kmRealizacao: number
