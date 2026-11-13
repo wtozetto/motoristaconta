@@ -17,6 +17,7 @@ import {
   type ManutencaoStatus,
   type SeguroSubcategoria,
 } from '../types'
+import { exportarHistoricoVeiculoPDF } from '../utils/pdfExport'
 
 const emptyManutencaoInput = (kmAtual = 0): ManutencaoInput => ({
   data: todayISO(),
@@ -108,6 +109,24 @@ export function ManutencaoPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() =>
+              exportarHistoricoVeiculoPDF(
+                manutencoes.map((item) => ({
+                  data: item.data,
+                  categoria: item.categoria,
+                  descricao: item.descricao,
+                  valor: item.valor,
+                  km: item.kmRealizacao,
+                  oficina: item.oficina,
+                })),
+              )
+            }
+            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold dark:border-slate-800"
+          >
+            Exportar PDF
+          </button>
           <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold dark:border-slate-800 dark:bg-slate-900">
             <span className="text-slate-400">KM atual:</span>{' '}
             <span className="text-emerald-600 dark:text-emerald-400">{formatKm(kmAtual)}</span>

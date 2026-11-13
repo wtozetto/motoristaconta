@@ -15,6 +15,9 @@ import { todayISO } from '../lib/format'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import type { ImportMode } from '../lib/backup'
 import type { ThemePreference } from '../types'
+import { aggregateRegistros } from '../lib/calculations'
+import { getCombustivelValor } from '../lib/fuel'
+import { exportarRelatorioPDF } from '../utils/pdfExport'
 
 export function ConfigPage() {
   const { session, logout } = useAuth()
@@ -48,6 +51,38 @@ export function ConfigPage() {
       fullBackupToCsv(registros, manutencoes),
       'text/csv;charset=utf-8',
     )
+  }
+
+  function exportPdf() {
+    const metrics = aggregateRegistros(registros)
+    const manutencaoTotal = manutencoes.reduce((total, item) => total + item.valor, 0)
+    exportarRelatorioPDF({
+      titulo: 'Relatório completo',
+      periodo: 'Histórico completo',
+      resumo: {
+        ganhos: metrics.totalGanhos,
+        gastos: metrics.totalGastos,
+        combustivel: registros.reduce(
+          (total, registro) => total + getCombustivelValor(registro.combustivel),
+          0,
+        ),
+        manutencao: manutencaoTotal,
+        lucro: metrics.lucroLiquido - manutencaoTotal,
+        km: metrics.km,
+      },
+      registros: registros.map((registro) => ({
+        data: registro.data,
+        ganhos: aggregateRegistros([registro]).totalGanhos,
+        gastos: getCombustivelValor(registro.combustivel) + registro.outrosGastos,
+        km: registro.kmFinal - registro.kmInicial,
+      })),
+      manutencoes: manutencoes.map((item) => ({
+        data: item.data,
+        categoria: item.categoria,
+        descricao: item.descricao,
+        valor: item.valor,
+      })),
+    })
   }
 
   async function onFile(file: File) {
@@ -238,6 +273,13 @@ export function ConfigPage() {
             className="h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold dark:border-slate-700"
           >
             Exportar CSV
+          </button>
+          <button
+            type="button"
+            onClick={exportPdf}
+            className="h-11 rounded-xl border border-slate-200 px-4 text-sm font-semibold dark:border-slate-700"
+          >
+            Exportar PDF
           </button>
           <button
             type="button"

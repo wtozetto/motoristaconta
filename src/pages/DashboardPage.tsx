@@ -28,6 +28,7 @@ import { buildCombustivelAggregate, calculateCombustivelMetrics, getCombustiveis
 import { getAllManutencaoAlertas, getKmAtual } from '../lib/maintenance'
 import { useReminders } from '../hooks/useReminders'
 import { validateRegistro } from '../lib/validation'
+import { exportarRelatorioPDF } from '../utils/pdfExport'
 import type {
   CombustivelTipo,
   PeriodPreset,
@@ -162,6 +163,39 @@ export function DashboardPage() {
     ? previous.totalGanhos - prevGastosExibidos
     : previous.lucroLiquido
 
+  function exportReport(reportRange: DateRange, title: string) {
+    const rows = filterByRange(registros, reportRange)
+    const metrics = aggregateRegistros(rows, filter)
+    const reportMaintenance = manutencoes.filter(
+      (item) => item.status === 'concluido' && item.data >= reportRange.start && item.data <= reportRange.end,
+    )
+    const maintenanceTotal = reportMaintenance.reduce((total, item) => total + item.valor, 0)
+    exportarRelatorioPDF({
+      titulo: title,
+      periodo: `${reportRange.start} a ${reportRange.end}`,
+      resumo: {
+        ganhos: metrics.totalGanhos,
+        gastos: metrics.totalGastos,
+        combustivel: rows.reduce((total, row) => total + getCombustivelValor(row.combustivel), 0),
+        manutencao: maintenanceTotal,
+        lucro: metrics.lucroLiquido - maintenanceTotal,
+        km: metrics.km,
+      },
+      registros: rows.map((row) => ({
+        data: row.data,
+        ganhos: aggregateRegistros([row], filter).totalGanhos,
+        gastos: getCombustivelValor(row.combustivel) + row.outrosGastos,
+        km: row.kmFinal - row.kmInicial,
+      })),
+      manutencoes: reportMaintenance.map((item) => ({
+        data: item.data,
+        categoria: item.categoria,
+        descricao: item.descricao,
+        valor: item.valor,
+      })),
+    })
+  }
+
   const outrosGastosTotal = Math.max(0, current.totalGastos - fuelMetrics.totalValor)
 
   return (
@@ -175,6 +209,22 @@ export function DashboardPage() {
         </div>
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <DriveBadge />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => exportReport({ start: today, end: today }, 'Resumo do dia')}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold dark:border-slate-800 dark:bg-slate-900"
+            >
+              Exportar resumo do dia em PDF
+            </button>
+            <button
+              type="button"
+              onClick={() => exportReport(monthRange, 'Relatório mensal')}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold dark:border-slate-800 dark:bg-slate-900"
+            >
+              Exportar relatório mensal em PDF
+            </button>
+          </div>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold sm:text-sm dark:border-slate-800 dark:bg-slate-900">
             <input
               type="checkbox"

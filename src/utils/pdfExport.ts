@@ -23,6 +23,19 @@ interface PdfReportData {
   }>
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }
+    return entities[character]
+  })
+}
+
 function formatBRL(value: number): string {
   return `R$ ${value.toFixed(2).replace('.', ',')}`
 }
@@ -90,7 +103,7 @@ export function exportarRelatorioPDF(data: PdfReportData): void {
     .map(
       (r) => `
       <tr>
-        <td>${formatDate(r.data)}</td>
+        <td>${escapeHtml(formatDate(r.data))}</td>
         <td>${formatBRL(r.ganhos)}</td>
         <td>${formatBRL(r.gastos)}</td>
         <td>${r.km.toFixed(0)} km</td>
@@ -109,9 +122,9 @@ export function exportarRelatorioPDF(data: PdfReportData): void {
             .map(
               (m) => `
             <tr>
-              <td>${formatDate(m.data)}</td>
-              <td>${m.categoria}</td>
-              <td>${m.descricao}</td>
+              <td>${escapeHtml(formatDate(m.data))}</td>
+              <td>${escapeHtml(m.categoria)}</td>
+              <td>${escapeHtml(m.descricao)}</td>
               <td>${formatBRL(m.valor)}</td>
             </tr>`,
             )
@@ -125,13 +138,13 @@ export function exportarRelatorioPDF(data: PdfReportData): void {
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>${data.titulo}</title>
+  <title>${escapeHtml(data.titulo)}</title>
   <style>${baseStyles}</style>
 </head>
 <body>
   <div class="header">
     <h1>🚗 MotoristaConta</h1>
-    <p>${data.titulo} — ${data.periodo}</p>
+    <p>${escapeHtml(data.titulo)} — ${escapeHtml(data.periodo)}</p>
   </div>
 
   <div class="summary-grid">
@@ -176,12 +189,12 @@ export function exportarHistoricoVeiculoPDF(
     .map(
       (m) => `
     <tr>
-      <td>${formatDate(m.data)}</td>
-      <td>${m.categoria}</td>
-      <td>${m.descricao}</td>
+      <td>${escapeHtml(formatDate(m.data))}</td>
+      <td>${escapeHtml(m.categoria)}</td>
+      <td>${escapeHtml(m.descricao)}</td>
       <td>${formatBRL(m.valor)}</td>
       <td>${m.km.toFixed(0)} km</td>
-      <td>${m.oficina ?? '—'}</td>
+      <td>${escapeHtml(m.oficina ?? '—')}</td>
     </tr>`,
     )
     .join('')
@@ -232,4 +245,35 @@ export function gerarResumoWhatsApp(
   km: number,
 ): string {
   return `📊 *MotoristaConta - ${periodo}*\n\n💰 Ganhos: R$ ${ganhos.toFixed(2)}\n💸 Gastos: R$ ${gastos.toFixed(2)}\n✅ Lucro: R$ ${lucro.toFixed(2)}\n🚗 KM: ${km.toFixed(0)}\n\n_Gerado pelo MotoristaConta_`
+}
+
+export function exportarListaLembretesPDF(
+  lembretes: Array<{ data: string; titulo: string; mensagem: string; valor?: number }>,
+): void {
+  const rows = lembretes
+    .map(
+      (item) => `
+    <tr>
+      <td>${escapeHtml(formatDate(item.data))}</td>
+      <td>${escapeHtml(item.titulo)}</td>
+      <td>${escapeHtml(item.mensagem)}</td>
+      <td>${item.valor === undefined ? '—' : formatBRL(item.valor)}</td>
+    </tr>`,
+    )
+    .join('')
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8" /><title>Lista de lembretes</title><style>${baseStyles}</style></head>
+<body>
+  <div class="header"><h1>MotoristaConta</h1><p>Lista de lembretes e vencimentos</p></div>
+  <div class="section">
+    <table>
+      <thead><tr><th>Vencimento</th><th>Item</th><th>Status</th><th>Valor</th></tr></thead>
+      <tbody>${rows || '<tr><td colspan="4">Nenhum lembrete cadastrado.</td></tr>'}</tbody>
+    </table>
+  </div>
+  <div class="footer">Gerado pelo MotoristaConta — ${new Date().toLocaleDateString('pt-BR')}</div>
+</body>
+</html>`
+  createPrintIframe(html)
 }

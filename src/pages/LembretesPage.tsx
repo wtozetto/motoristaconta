@@ -7,6 +7,7 @@ import { diasAteVencimento, getDueMessage } from '../hooks/useReminders'
 import { useReminders } from '../hooks/useReminders'
 import type { ContaFixa, ContaFixaInput } from '../types'
 import { useTheme } from '../theme/ThemeContext'
+import { exportarListaLembretesPDF } from '../utils/pdfExport'
 
 const TIPOS: Array<{ value: ContaFixa['tipo']; label: string }> = [
   { value: 'seguro', label: 'Seguro' },
@@ -126,6 +127,22 @@ export function LembretesPage() {
         <p className="text-sm text-slate-500">
           Cadastre contas do veículo e acompanhe os prazos em ordem de vencimento.
         </p>
+        <button
+          type="button"
+          onClick={() =>
+            exportarListaLembretesPDF(
+              reminders.map((item) => ({
+                data: item.dataVencimento,
+                titulo: item.titulo,
+                mensagem: item.mensagem,
+                valor: item.valor,
+              })),
+            )
+          }
+          className="mt-3 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold dark:border-slate-800 dark:bg-slate-900"
+        >
+          Exportar lembretes em PDF
+        </button>
       </header>
 
       <form
