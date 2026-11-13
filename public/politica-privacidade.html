@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de Privacidade — MotoristaConta / ContaRota</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+      line-height: 1.7;
+      color: #1e293b;
+      background: #f8fafc;
+      padding: 1rem;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+      padding: 2rem;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 2px solid #059669;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      color: #059669;
+      margin-bottom: 0.25rem;
+    }
+    header p {
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+    h2 {
+      font-size: 1.15rem;
+      color: #047857;
+      margin: 1.75rem 0 0.5rem;
+    }
+    p, li {
+      font-size: 0.95rem;
+      color: #334155;
+    }
+    ul {
+      padding-left: 1.25rem;
+      margin: 0.5rem 0;
+    }
+    li { margin-bottom: 0.35rem; }
+    a {
+      color: #059669;
+      text-decoration: underline;
+    }
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e2e8f0;
+      font-size: 0.8rem;
+      color: #94a3b8;
+    }
+    @media (max-width: 600px) {
+      body { padding: 0.5rem; }
+      .container { padding: 1.25rem; border-radius: 8px; }
+      header h1 { font-size: 1.25rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🚗 MotoristaConta / ContaRota</h1>
+      <p>Política de Privacidade</p>
+    </header>
+
+    <h2>1. Introdução</h2>
+    <p>
+      O MotoristaConta (também conhecido como ContaRota) é um aplicativo web
+      progressivo (PWA) para controle de ganhos, gastos e quilometragem de
+      motoristas de aplicativo. Esta política explica como seus dados são
+      tratados ao utilizar o aplicativo.
+    </p>
+
+    <h2>2. Dados coletados e armazenamento</h2>
+    <p>
+      <strong>Todos os seus dados são armazenados localmente</strong> no
+      navegador do seu dispositivo (IndexedDB/localStorage). O aplicativo
+      <strong>não possui servidores próprios</strong> e nenhum dado pessoal é
+      enviado para servidores do MotoristaConta.
+    </p>
+    <p>Os dados armazenados localmente incluem:</p>
+    <ul>
+      <li>Registros de ganhos, gastos e quilometragem</li>
+      <li>Registros de manutenção do veículo</li>
+      <li>Configurações do aplicativo</li>
+      <li>Contas fixas cadastradas</li>
+    </ul>
+
+    <h2>3. Backup no Google Drive</h2>
+    <p>
+      Opcionalmente, você pode ativar o backup dos seus dados no Google Drive.
+      Para isso, o aplicativo solicita acesso ao escopo
+      <code>drive.file</code> da sua conta Google, o que permite ao aplicativo
+      <strong>apenas criar e acessar arquivos que ele mesmo criou</strong> no
+      seu Drive — ele não tem acesso a nenhum outro arquivo da sua conta.
+    </p>
+    <p>
+      A autenticação é feita via Google OAuth 2.0. O token de acesso é
+      armazenado localmente no seu navegador e nunca é enviado para terceiros.
+    </p>
+
+    <h2>4. Google AdSense e Cookies</h2>
+    <p>
+      O aplicativo utiliza o <strong>Google AdSense</strong> para exibição de
+      anúncios. O Google pode usar cookies e identificadores de publicidade
+      para personalizar os anúncios exibidos. Para mais informações sobre como
+      o Google utiliza dados de publicidade, consulte:
+      <a href="https://policies.google.com/technologies/ads" target="_blank" rel="noopener">
+        Políticas de Publicidade do Google</a>.
+    </p>
+    <p>
+      Além dos cookies do Google AdSense, o aplicativo em si
+      <strong>não utiliza cookies</strong> adicionais para rastreamento.
+    </p>
+
+    <h2>5. Compartilhamento de dados</h2>
+    <p>
+      Seus dados <strong>não são compartilhados</strong> com terceiros pelo
+      aplicativo. O único serviço externo utilizado é o Google Drive (quando
+      ativado por você) e o Google AdSense (para exibição de anúncios).
+    </p>
+
+    <h2>6. Retenção de dados</h2>
+    <p>
+      Como os dados são armazenados localmente, eles permanecem no seu
+      dispositivo até que você os exclua manualmente ou limpe os dados do
+      navegador. Os backups no Google Drive permanecem na sua conta até que
+      você os remova.
+    </p>
+
+    <h2>7. Seus direitos</h2>
+    <p>Você tem o direito de:</p>
+    <ul>
+      <li>Acessar todos os seus dados diretamente no aplicativo</li>
+      <li>Exportar seus dados (via backup no Google Drive ou PDF)</li>
+      <li>Excluir seus dados a qualquer momento (limpando os dados do navegador)</li>
+      <li>Revogar o acesso ao Google Drive a qualquer momento nas
+        <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener">
+          configurações da sua conta Google</a></li>
+      <li>Desativar cookies de personalização de anúncios nas
+        <a href="https://adssettings.google.com" target="_blank" rel="noopener">
+          configurações de anúncios do Google</a></li>
+    </ul>
+
+    <h2>8. Segurança</h2>
+    <p>
+      Os dados armazenados localmente estão protegidos pelas mesmas medidas de
+      segurança do seu navegador e dispositivo. A comunicação com o Google
+      Drive e Google OAuth é feita exclusivamente via HTTPS.
+    </p>
+
+    <h2>9. Alterações nesta política</h2>
+    <p>
+      Esta política pode ser atualizada periodicamente. A data da última
+      atualização está indicada abaixo. Recomendamos que você revise esta
+      página ocasionalmente.
+    </p>
+
+    <h2>10. Contato</h2>
+    <p>
+      Caso tenha dúvidas sobre esta política de privacidade, entre em contato
+      através do próprio aplicativo ou abra uma issue no repositório do projeto.
+    </p>
+
+    <footer>
+      <p>Última atualização: 11 de novembro de 2026</p>
+      <p style="margin-top:0.5rem;">
+        <a href="/">← Voltar para o MotoristaConta</a>
+      </p>
+    </footer>
+  </div>
+</body>
+</html>

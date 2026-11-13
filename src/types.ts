@@ -65,6 +65,7 @@ export interface Registro {
   combustiveis?: CombustivelItem[]
   outrosGastos: number
   observacoes: string
+  etiquetas?: string[]  // "feriado", "corrida especial", "aeroporto", etc.
   atualizadoEm: string
 }
 
@@ -77,6 +78,7 @@ export interface RegistroInput {
   combustiveis?: CombustivelItem[]
   outrosGastos?: number
   observacoes?: string
+  etiquetas?: string[]
 }
 
 export const MANUTENCAO_CATEGORIAS = [
