@@ -7,8 +7,8 @@ export class MotoristaDB extends Dexie {
   contasFixas!: Table<ContaFixa, string>
   categoriasManutencao!: Table<{ id: string; nome: string }, string>
 
-  constructor() {
-    super('MotoristaConta')
+  constructor(name = 'MotoristaConta') {
+    super(name)
     this.version(1).stores({
       registros: 'id, data, atualizadoEm',
     })
@@ -30,7 +30,50 @@ export class MotoristaDB extends Dexie {
   }
 }
 
-export const db = new MotoristaDB()
+export let db = new MotoristaDB()
+let activeScope = ''
+
+export async function setDatabaseScope(scope: string): Promise<void> {
+  const normalized = scope.trim() || 'anonymous'
+  if (activeScope === normalized) return
+
+  db.close()
+  db = new MotoristaDB(`MotoristaConta:${encodeURIComponent(normalized)}`)
+  activeScope = normalized
+  await db.open()
+
+  const legacyOwner = localStorage.getItem('motoristaconta.legacyDataOwner')
+  const migratedKey = `motoristaconta.legacyDataMigrated:${normalized}`
+  if (legacyOwner !== normalized || localStorage.getItem(migratedKey)) return
+
+  const legacy = new MotoristaDB()
+  try {
+    await legacy.open()
+    const [records, maintenance, bills, categories] = await Promise.all([
+      legacy.registros.toArray(),
+      legacy.manutencoes.toArray(),
+      legacy.contasFixas.toArray(),
+      legacy.categoriasManutencao.toArray(),
+    ])
+    const [recordCount, maintenanceCount, billCount, categoryCount] = await Promise.all([
+      db.registros.count(),
+      db.manutencoes.count(),
+      db.contasFixas.count(),
+      db.categoriasManutencao.count(),
+    ])
+    if (recordCount + maintenanceCount + billCount + categoryCount === 0) {
+      await db.transaction('rw', db.registros, db.manutencoes, db.contasFixas, db.categoriasManutencao, async () => {
+        if (records.length) await db.registros.bulkPut(records)
+        if (maintenance.length) await db.manutencoes.bulkPut(maintenance)
+        if (bills.length) await db.contasFixas.bulkPut(bills)
+        if (categories.length) await db.categoriasManutencao.bulkPut(categories)
+      })
+    }
+    localStorage.setItem(migratedKey, 'true')
+  } finally {
+    legacy.close()
+  }
+}
 
 export async function listRegistros(): Promise<Registro[]> {
   return db.registros.orderBy('data').reverse().toArray()

@@ -1,36 +1,57 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { loadGisScript } from '../auth/gis'
 import { useAuth } from '../auth/AuthContext'
 
 export function GoogleSignIn() {
-  const { loginWithGoogle, loginDevBypass } = useAuth()
+  const { loginWithCredential, loginDevBypass } = useAuth()
+  const buttonRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const allowBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 
-  async function onGoogle() {
-    setError(null)
-    setBusy(true)
-    try {
-      await loginWithGoogle()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha no login Google.')
-    } finally {
-      setBusy(false)
+  useEffect(() => {
+    let active = true
+    if (!clientId || !buttonRef.current) return
+    void loadGisScript()
+      .then(() => {
+        if (!active || !buttonRef.current || !window.google?.accounts.id) return
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response) => {
+            setError(null)
+            setBusy(true)
+            void loginWithCredential(response.credential)
+              .catch((err: unknown) => {
+                setError(err instanceof Error ? err.message : 'Falha no login Google.')
+              })
+              .finally(() => setBusy(false))
+          },
+        })
+        window.google.accounts.id.renderButton(buttonRef.current, {
+          theme: 'outline',
+          size: 'large',
+          text: 'signin_with',
+          shape: 'rectangular',
+          width: 320,
+          locale: 'pt-BR',
+        })
+      })
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'Falha ao carregar o login Google.')
+      })
+    return () => {
+      active = false
     }
-  }
+  }, [clientId, loginWithCredential])
 
   return (
     <div className="flex flex-col items-center gap-4">
       {clientId ? (
-        <button
-          type="button"
-          onClick={() => void onGoogle()}
-          disabled={busy}
-          className="btn-primary flex h-12 w-full items-center justify-center gap-3 rounded-xl text-sm font-semibold disabled:opacity-60"
-        >
-          {busy ? 'Conectando…' : 'Entrar com Google'}
-        </button>
+        <div className="relative min-h-10 w-full">
+          <div ref={buttonRef} className={busy ? 'pointer-events-none opacity-50' : ''} />
+          {busy ? <span className="mt-2 block text-center text-sm">Conectando…</span> : null}
+        </div>
       ) : (
         <div className="max-w-sm rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           <p className="font-semibold">Configure o login Google</p>

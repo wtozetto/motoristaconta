@@ -6,6 +6,8 @@ import { ThemeProvider } from './theme/ThemeContext'
 import { Layout } from './components/Layout'
 import { RequireAuth } from './components/RequireAuth'
 import { DriveProvider } from './drive/DriveContext'
+import { RequireAdmin } from './components/RequireAdmin'
+import { RequireSubscription } from './components/RequireSubscription'
 
 const ConfigPage = lazy(() =>
   import('./pages/ConfigPage').then(({ ConfigPage }) => ({ default: ConfigPage })),
@@ -31,11 +33,35 @@ const CategoriasPage = lazy(() =>
 const AtalhosPage = lazy(() =>
   import('./pages/AtalhosPage').then(({ AtalhosPage }) => ({ default: AtalhosPage })),
 )
+const SubscriptionPage = lazy(() =>
+  import('./pages/SubscriptionPage').then(({ SubscriptionPage }) => ({ default: SubscriptionPage })),
+)
+const AdminLayout = lazy(() =>
+  import('./pages/admin/AdminLayout').then(({ AdminLayout }) => ({ default: AdminLayout })),
+)
+const DashboardAdmin = lazy(() =>
+  import('./pages/admin/DashboardAdmin').then(({ DashboardAdmin }) => ({ default: DashboardAdmin })),
+)
+const UsersAdmin = lazy(() =>
+  import('./pages/admin/UsersAdmin').then(({ UsersAdmin }) => ({ default: UsersAdmin })),
+)
+const SubscriptionsAdmin = lazy(() =>
+  import('./pages/admin/SubscriptionsAdmin').then(({ SubscriptionsAdmin }) => ({ default: SubscriptionsAdmin })),
+)
+const PaymentsAdmin = lazy(() =>
+  import('./pages/admin/PaymentsAdmin').then(({ PaymentsAdmin }) => ({ default: PaymentsAdmin })),
+)
+const RemindersAdmin = lazy(() =>
+  import('./pages/admin/RemindersAdmin').then(({ RemindersAdmin }) => ({ default: RemindersAdmin })),
+)
+const SettingsAdmin = lazy(() =>
+  import('./pages/admin/SettingsAdmin').then(({ SettingsAdmin }) => ({ default: SettingsAdmin })),
+)
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
         <BrowserRouter>
           <Suspense
             fallback={
@@ -47,13 +73,23 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route
+                path="/assinatura"
                 element={
                   <RequireAuth>
-                    <DataProvider>
-                      <DriveProvider>
-                        <Layout />
-                      </DriveProvider>
-                    </DataProvider>
+                    <SubscriptionPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                element={
+                  <RequireAuth>
+                    <RequireSubscription>
+                      <DataProvider>
+                        <DriveProvider>
+                          <Layout />
+                        </DriveProvider>
+                      </DataProvider>
+                    </RequireSubscription>
                   </RequireAuth>
                 }
               >
@@ -65,12 +101,29 @@ export default function App() {
                 <Route path="/lembretes" element={<LembretesPage />} />
                 <Route path="/configuracoes" element={<ConfigPage />} />
               </Route>
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth>
+                    <RequireAdmin>
+                      <AdminLayout />
+                    </RequireAdmin>
+                  </RequireAuth>
+                }
+              >
+                <Route index element={<DashboardAdmin />} />
+                <Route path="usuarios" element={<UsersAdmin />} />
+                <Route path="assinaturas" element={<SubscriptionsAdmin />} />
+                <Route path="pagamentos" element={<PaymentsAdmin />} />
+                <Route path="lembretes" element={<RemindersAdmin />} />
+                <Route path="configuracoes" element={<SettingsAdmin />} />
+              </Route>
               <Route path="/" element={<Navigate to="/lancamentos" replace />} />
               <Route path="*" element={<Navigate to="/lancamentos" replace />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AuthProvider>
   )
 }

@@ -14,6 +14,12 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Never commit local or deployment credentials.
+.env.local
+.env.*.local
+.env.production
+.env.development
+*.pem
 .vercel
 
 # Editor directories and files

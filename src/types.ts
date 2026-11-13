@@ -159,6 +159,9 @@ export interface GoogleSession {
   name: string
   email: string
   lastAccessAt: string
+  supabaseUserId?: string
+  role?: 'admin' | 'driver'
+  accessBlocked?: boolean
 }
 
 export type ThemePreference = 'light' | 'dark' | 'system'

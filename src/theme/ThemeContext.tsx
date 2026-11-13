@@ -10,6 +10,7 @@ import {
 import { loadSettings, saveSettings } from '../settings/storage'
 import { setLocalModificacaoStamp } from '../drive/syncStorage'
 import type { AppSettings, ThemePreference } from '../types'
+import { useAuth } from '../auth/AuthContext'
 
 interface ThemeContextValue {
   settings: AppSettings
@@ -26,7 +27,9 @@ function applyDomTheme(theme: 'light' | 'dark'): void {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(() => loadSettings())
+  const { session } = useAuth()
+  const scope = session?.googleId === 'dev-bypass' ? '' : session?.googleId ?? ''
+  const [settings, setSettings] = useState<AppSettings>(() => loadSettings(scope))
   const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(() =>
     window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
   )
@@ -35,6 +38,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyDomTheme(resolvedTheme)
   }, [resolvedTheme])
+
+  useEffect(() => {
+    setSettings(loadSettings(scope))
+  }, [scope])
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
@@ -47,11 +54,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const persist = useCallback((next: AppSettings) => {
     setSettings(next)
-    saveSettings(next)
+    saveSettings(next, scope)
     // Preferências locais alteradas também contam como modificação: evita que a
     // sincronização use um carimbo antigo e prefira a versão remota.
     setLocalModificacaoStamp(new Date().toISOString())
-  }, [])
+  }, [scope])
 
   const setTheme = useCallback(
     (theme: ThemePreference) => {

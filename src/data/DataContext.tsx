@@ -41,7 +41,10 @@ import {
   getLocalModificacaoStamp,
   setLocalModificacaoStamp,
   setLocalCategoriasManutencaoStamp,
+  setSyncStorageScope,
 } from '../drive/syncStorage'
+import { setDatabaseScope } from '../db/database'
+import { useAuth } from '../auth/AuthContext'
 
 interface DataContextValue {
   registros: Registro[]
@@ -72,6 +75,7 @@ interface DataContextValue {
 const DataContext = createContext<DataContextValue | null>(null)
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [registros, setRegistros] = useState<Registro[]>([])
   const [manutencoes, setManutencoes] = useState<Manutencao[]>([])
   const [contasFixas, setContasFixas] = useState<ContaFixa[]>([])
@@ -108,8 +112,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    let active = true
+    const scope = session?.googleId ?? 'anonymous'
+    setSyncStorageScope(scope)
+    setLoading(true)
+    void setDatabaseScope(scope)
+      .then(() => active ? refresh() : undefined)
+      .catch((error: unknown) => {
+        console.error('Falha ao abrir os dados locais do usuário:', error)
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [refresh, session?.googleId, session?.supabaseUserId])
 
   const saveRegistro = useCallback(
     async (input: RegistroInput, id?: string) => {

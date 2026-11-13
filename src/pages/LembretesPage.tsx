@@ -8,6 +8,8 @@ import { useReminders } from '../hooks/useReminders'
 import type { ContaFixa, ContaFixaInput } from '../types'
 import { useTheme } from '../theme/ThemeContext'
 import { exportarListaLembretesPDF } from '../utils/pdfExport'
+import { useCloudReminders } from '../hooks/useCloudReminders'
+import { supabase } from '../services/supabase'
 
 const TIPOS: Array<{ value: ContaFixa['tipo']; label: string }> = [
   { value: 'seguro', label: 'Seguro' },
@@ -42,6 +44,13 @@ export function LembretesPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<ContaFixa | null>(null)
+  const cloud = useCloudReminders()
+  const [cloudTitle, setCloudTitle] = useState('')
+  const [cloudType, setCloudType] = useState<'oil_change' | 'ipva' | 'licensing' | 'insurance' | 'custom'>('custom')
+  const [cloudDate, setCloudDate] = useState('')
+  const [cloudDays, setCloudDays] = useState(7)
+  const [cloudRepeatDays, setCloudRepeatDays] = useState(0)
+  const [cloudError, setCloudError] = useState<string | null>(null)
 
   const sortedContas = useMemo(
     () => [...contasFixas].sort((a, b) => a.dataVencimento.localeCompare(b.dataVencimento)),
@@ -117,6 +126,25 @@ export function LembretesPage() {
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível atualizar o vencimento.')
+    }
+  }
+
+  async function addCloudReminder(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setCloudError(null)
+    try {
+      await cloud.save({
+        title: cloudTitle.trim(),
+        type: cloudType,
+        description: '',
+        due_date: cloudDate,
+        repeat_days: cloudRepeatDays || null,
+        notify_days_before: cloudDays,
+      })
+      setCloudTitle('')
+      setCloudDate('')
+    } catch (err) {
+      setCloudError(err instanceof Error ? err.message : 'Não foi possível salvar o lembrete.')
     }
   }
 
@@ -265,6 +293,30 @@ export function LembretesPage() {
           })
         )}
       </section>
+
+      {supabase ? (
+        <section className="space-y-3 border-t border-slate-200 pt-6 dark:border-slate-700">
+          <div>
+            <h2 className="text-lg font-semibold">Lembretes na nuvem</h2>
+            <p className="text-sm text-slate-500">Sincronizados com sua conta e isolados por usuário.</p>
+          </div>
+          <form onSubmit={(event) => void addCloudReminder(event)} className="card grid gap-3 p-4 sm:grid-cols-2">
+            <label className="text-sm">Título<input required maxLength={120} value={cloudTitle} onChange={(event) => setCloudTitle(event.target.value)} className="mt-1 h-10 w-full rounded-lg border px-3 dark:border-slate-700 dark:bg-slate-950" /></label>
+            <label className="text-sm">Tipo<select value={cloudType} onChange={(event) => setCloudType(event.target.value as typeof cloudType)} className="mt-1 h-10 w-full rounded-lg border px-3 dark:border-slate-700 dark:bg-slate-950"><option value="oil_change">Troca de óleo</option><option value="ipva">IPVA</option><option value="licensing">Licenciamento</option><option value="insurance">Seguro</option><option value="custom">Personalizado</option></select></label>
+            <label className="text-sm">Data<input required type="date" value={cloudDate} onChange={(event) => setCloudDate(event.target.value)} className="mt-1 h-10 w-full rounded-lg border px-3 dark:border-slate-700 dark:bg-slate-950" /></label>
+            <label className="text-sm">Avisar com antecedência (dias)<input type="number" min={0} max={365} value={cloudDays} onChange={(event) => setCloudDays(Number(event.target.value))} className="mt-1 h-10 w-full rounded-lg border px-3 dark:border-slate-700 dark:bg-slate-950" /></label>
+            <label className="text-sm">Repetição<select value={cloudRepeatDays} onChange={(event) => setCloudRepeatDays(Number(event.target.value))} className="mt-1 h-10 w-full rounded-lg border px-3 dark:border-slate-700 dark:bg-slate-950"><option value={0}>Não repetir</option><option value={7}>A cada 7 dias</option><option value={30}>A cada 30 dias</option><option value={365}>Anual</option></select></label>
+            {cloudError || cloud.error ? <p role="alert" className="text-sm text-rose-600">{cloudError ?? cloud.error}</p> : null}
+            <button type="submit" className="btn-primary h-10 rounded-lg px-4 text-sm font-semibold sm:col-span-2">Adicionar lembrete</button>
+          </form>
+          {cloud.reminders.map((item) => (
+            <article key={item.id} className="card flex items-center justify-between gap-3 p-4">
+              <div><h3 className="font-medium">{item.title}</h3><p className="text-sm text-slate-500">{new Date(item.due_date).toLocaleDateString('pt-BR')} · Aviso {item.notify_days_before} dias antes</p></div>
+              <button type="button" onClick={() => void cloud.remove(item.id)} className="rounded-lg border border-rose-300 px-3 py-2 text-xs text-rose-700">Excluir</button>
+            </article>
+          ))}
+        </section>
+      ) : null}
 
       <ConfirmDialog
         open={Boolean(pendingDelete)}

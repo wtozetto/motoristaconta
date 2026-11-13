@@ -223,5 +223,43 @@ Em **Lançamentos** e **Dashboard**, o filtro Todas | Uber | 99 | Indrive muda o
 ## Stack
 
 React 19 + Vite + TypeScript + Tailwind CSS + Dexie.js + Recharts + Google Identity Services + PWA (vite-plugin-pwa).
-   
- 
+
+## Painel administrativo, Supabase e assinaturas
+
+### Supabase e autenticação
+
+1. Configure o provedor Google em **Authentication → Providers** no Supabase e use o mesmo Google OAuth Client ID definido em `VITE_GOOGLE_CLIENT_ID`.
+2. Execute `supabase/migrations/001_initial_setup.sql` no SQL Editor do projeto Supabase. A migração cria os perfis, planos, assinaturas, pagamentos, lembretes, notificações e políticas RLS.
+3. Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no ambiente do frontend. A chave anon é pública e depende das políticas RLS; nunca coloque a service-role key em uma variável `VITE_*`.
+4. Entre uma vez com a conta que será administradora e, no SQL Editor, promova o perfil:
+
+   ```sql
+   update public.profiles
+   set role = 'admin'
+   where email = 'admin@seudominio.com';
+   ```
+
+   A criação de novos perfis usa o papel `driver`. Não há cadastro público de administradores.
+
+As tabelas remotas usam RLS e `auth.uid()` para limitar os registros ao usuário, com exceções explícitas para administradores. Os lançamentos e manutenções atuais continuam no IndexedDB e no Google Drive; o IndexedDB agora é separado por identidade Google. Na primeira abertura após a atualização, a base local legada só é copiada quando a identidade salva corresponde à identidade daquela base. A tabela remota `lancamentos` e `manutencao` já está protegida por RLS para integração cloud futura.
+
+### Mercado Pago e notificações de cobrança
+
+Configure no ambiente server-side da Vercel:
+
+| Variável | Uso |
+| --- | --- |
+| `SUPABASE_URL` | URL do projeto, usada pelas funções serverless |
+| `SUPABASE_SERVICE_ROLE_KEY` | Chave privilegiada, exclusivamente server-side |
+| `VITE_SUPABASE_ANON_KEY` | Chave pública usada para validar sessões nas APIs |
+| `MERCADOPAGO_ACCESS_TOKEN` | Token privado para criar e consultar assinaturas |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Segredo para validar `x-signature` dos webhooks |
+| `APP_URL` | URL pública do app usada no retorno do checkout |
+| `CRON_SECRET` | Segredo enviado pela Vercel Cron para a régua diária |
+| `RESEND_API_KEY` | Opcional; envio de e-mail de vencimento via Resend |
+
+Cadastre `https://seu-dominio/api/webhook-mercadopago` como URL de webhook no Mercado Pago e habilite eventos de pagamentos e assinaturas (preapproval). A API valida a assinatura HMAC antes de consultar o recurso diretamente no Mercado Pago. O job `/api/billing-cron` roda diariamente pela configuração em `vercel.json`, envia avisos in-app, suspende assinaturas após a tolerância e processa lembretes recorrentes. Para e-mail, configure a `RESEND_API_KEY` e o remetente verificado em **Admin → Configurações** (ou `EMAIL_FROM` no servidor).
+
+Configure `VITE_GOOGLE_CLIENT_ID`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `APP_URL` e `CRON_SECRET` nas variáveis da Vercel. `RESEND_API_KEY` e `EMAIL_FROM` são opcionais. Não cadastre chaves privadas com prefixo `VITE_`.
+
+O painel fica em `/admin` e exige papel `admin` no perfil Supabase. O checkout e o webhook não são simulados quando as credenciais do Mercado Pago estão ausentes; nesse caso, o endpoint retorna erro explícito e o restante do app local continua disponível.

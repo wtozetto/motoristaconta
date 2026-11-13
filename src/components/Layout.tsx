@@ -5,6 +5,8 @@ import { DriveBadge } from './DriveBadge'
 import { useSyncTimer } from '../hooks/useSyncTimer'
 import { Toast } from './Toast'
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
+import { NotificationsBell } from './NotificationsBell'
+import { SubscriptionNotice } from './SubscriptionNotice'
 
 const LINKS = [
   { to: '/lancamentos', label: 'Lançamentos' },
@@ -71,6 +73,11 @@ export function Layout() {
         </div>
         <nav className="mt-8 flex flex-col gap-2" aria-label="Principal">
           <NavItems />
+          {session?.role === 'admin' ? (
+            <NavLink to="/admin" className="app-nav-idle rounded-xl px-3 py-2 text-sm font-medium">
+              Painel administrativo
+            </NavLink>
+          ) : null}
         </nav>
         <NavLink
           to="/atalhos"
@@ -82,6 +89,7 @@ export function Layout() {
           <p className="text-sm font-medium">{session?.name}</p>
           <p className="sidebar-subtle truncate text-xs">{session?.email}</p>
           <DriveBadge />
+          <NotificationsBell />
           <button
             type="button"
             onClick={logout}
@@ -95,6 +103,7 @@ export function Layout() {
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 flex items-center justify-between border-b border-amber-200 bg-white/90 px-4 py-3 backdrop-blur lg:hidden dark:border-amber-900/40 dark:bg-slate-900/90">
           <div className="flex items-center gap-2">
+            <NotificationsBell />
             <img src="/icon-192.png" alt="" className="h-8 w-8 object-contain" />
             <div>
               <p className="font-bold">MotoristaConta</p>
@@ -106,6 +115,7 @@ export function Layout() {
             <NavLink to="/atalhos" className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               Ajuda
             </NavLink>
+            {session?.role === 'admin' ? <NavLink to="/admin" className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Admin</NavLink> : null}
             <button
               type="button"
               onClick={logout}
@@ -116,6 +126,7 @@ export function Layout() {
           </div>
         </header>
         <main className="px-4 py-5 pb-24 lg:px-8 lg:pb-8">
+          <SubscriptionNotice />
           <Outlet />
         </main>
       </div>
