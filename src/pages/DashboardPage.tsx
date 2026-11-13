@@ -29,6 +29,7 @@ import { getAllManutencaoAlertas, getKmAtual } from '../lib/maintenance'
 import { useReminders } from '../hooks/useReminders'
 import { validateRegistro } from '../lib/validation'
 import { exportarRelatorioPDF } from '../utils/pdfExport'
+import { copiarResumoRelatorio } from '../utils/shareUtils'
 import type {
   CombustivelTipo,
   PeriodPreset,
@@ -58,6 +59,7 @@ export function DashboardPage() {
   const [pendingDelete, setPendingDelete] = useState<Registro | null>(null)
   const [includeMaintenance, setIncludeMaintenance] = useState(false)
   const [chartView, setChartView] = useState<'summary' | 'evolution' | 'comparison'>('summary')
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
 
   const range = useMemo(
     () => getPeriodRange(preset, new Date(), custom),
@@ -229,6 +231,33 @@ export function DashboardPage() {
     })
   }
 
+  async function copyReport(reportRange: DateRange, title: string) {
+    const rows = filterByRange(registros, reportRange)
+    const metrics = aggregateRegistros(rows, filter)
+    const maintenanceTotal = manutencoes
+      .filter(
+        (item) =>
+          item.status === 'concluido' &&
+          item.data >= reportRange.start &&
+          item.data <= reportRange.end,
+      )
+      .reduce((total, item) => total + item.valor, 0)
+    try {
+      await copiarResumoRelatorio({
+        periodo: title,
+        ganhos: metrics.totalGanhos,
+        gastos: metrics.totalGastos,
+        manutencao: maintenanceTotal,
+        lucro: metrics.lucroLiquido - maintenanceTotal,
+        km: metrics.km,
+      })
+      setCopyFeedback('Resumo copiado.')
+    } catch (error) {
+      setCopyFeedback(error instanceof Error ? error.message : 'Não foi possível copiar o resumo.')
+    }
+    window.setTimeout(() => setCopyFeedback(null), 3000)
+  }
+
   const outrosGastosTotal = Math.max(0, current.totalGastos - fuelMetrics.totalValor)
 
   return (
@@ -257,7 +286,22 @@ export function DashboardPage() {
             >
               Exportar relatório mensal em PDF
             </button>
+            <button
+              type="button"
+              onClick={() => void copyReport({ start: today, end: today }, 'Resumo do dia')}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold dark:border-slate-800 dark:bg-slate-900"
+            >
+              Copiar resumo do dia
+            </button>
+            <button
+              type="button"
+              onClick={() => void copyReport(monthRange, 'Relatório mensal')}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold dark:border-slate-800 dark:bg-slate-900"
+            >
+              Copiar resumo mensal
+            </button>
           </div>
+          {copyFeedback ? <p role="status" className="text-xs text-slate-500">{copyFeedback}</p> : null}
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold sm:text-sm dark:border-slate-800 dark:bg-slate-900">
             <input
               type="checkbox"
