@@ -33,8 +33,10 @@ npm run preview
 | --- | --- | --- |
 | `VITE_GOOGLE_CLIENT_ID` | Sim, para login real | Client ID OAuth do tipo *Aplicativo da Web* |
 | `VITE_DEV_BYPASS_AUTH` | Não | Só testes locais. `true` mostra “Entrar em modo de teste”. **Nunca** use isso em produção. |
-| `SUPABASE_URL` | Sim, para o contador | URL do projeto Supabase; usada apenas pela função serverless |
-| `SUPABASE_SERVICE_ROLE_KEY` | Sim, para o contador | Chave secreta do Supabase; configure apenas no ambiente server-side, nunca no frontend |
+| `SUPABASE_URL` | Sim | URL do projeto Supabase; também é fallback de build para o frontend |
+| `SUPABASE_ANON_KEY` | Sim | Chave pública anon; fallback de build e validação de sessão nas APIs |
+| `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Opcional | Sobrescrevem os valores públicos Supabase usados pelo frontend |
+| `SUPABASE_SERVICE_ROLE_KEY` | Sim, para APIs administrativas | Chave secreta; configure apenas no ambiente server-side, nunca no frontend |
 
 Arquivo de exemplo: `.env.example` (contém apenas nomes e valores vazios; não coloque chaves secretas no frontend).
 
