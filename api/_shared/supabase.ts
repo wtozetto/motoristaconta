@@ -3,7 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 export function serverClients() {
   const url = process.env.SUPABASE_URL
-  const anonKey = process.env.VITE_SUPABASE_ANON_KEY
+  const anonKey = process.env.SUPABASE_ANON_KEY ?? process.env.VITE_SUPABASE_ANON_KEY
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !anonKey || !serviceRoleKey) {
     throw new Error('Supabase server environment is not configured.')

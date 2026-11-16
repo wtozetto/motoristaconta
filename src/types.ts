@@ -81,6 +81,23 @@ export interface RegistroInput {
   etiquetas?: string[]
 }
 
+export interface TimeEntry {
+  id: string
+  user_id: string
+  platform: string
+  minutes_online: number
+  date: string
+  notes: string | null
+  created_at: string
+}
+
+export interface PlatformTotal {
+  platform: string
+  total_minutes: number
+  total_hours: number
+  entries_count: number
+}
+
 export const MANUTENCAO_CATEGORIAS = [
   'Troca de óleo',
   'Filtros',

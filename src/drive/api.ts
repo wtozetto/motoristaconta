@@ -80,6 +80,17 @@ export async function downloadFileText(accessToken: string, fileId: string): Pro
   return res.text()
 }
 
+export async function deleteDriveFile(accessToken: string, fileId: string): Promise<void> {
+  const res = await fetch(`${DRIVE_FILES}/${encodeURIComponent(fileId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Google Drive (${res.status}): ${text.slice(0, 180)}`)
+  }
+}
+
 function multipartBody(name: string, content: string): { body: string; contentType: string } {
   const boundary = `motoristaconta_${crypto.randomUUID()}`
   const meta = JSON.stringify({

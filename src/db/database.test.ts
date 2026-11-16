@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { db, MotoristaDB, listRegistros, setDatabaseScope, upsertRegistro } from './database'
+import {
+  clearUserData,
+  db,
+  MotoristaDB,
+  listRegistros,
+  setDatabaseScope,
+  upsertRegistro,
+} from './database'
 import type { Registro } from '../types'
 
 const record = (id: string): Registro => ({
@@ -18,6 +25,8 @@ describe('isolamento do IndexedDB por conta', () => {
   const suffix = crypto.randomUUID()
   const owner = `owner-${suffix}`
   const other = `other-${suffix}`
+  const clearOwner = `clear-owner-${suffix}`
+  const clearOther = `clear-other-${suffix}`
   const legacyDb = new MotoristaDB()
 
   afterEach(async () => {
@@ -26,6 +35,8 @@ describe('isolamento do IndexedDB por conta', () => {
     localStorage.clear()
     await MotoristaDB.delete(`MotoristaConta:${encodeURIComponent(owner)}`)
     await MotoristaDB.delete(`MotoristaConta:${encodeURIComponent(other)}`)
+    await MotoristaDB.delete(`MotoristaConta:${encodeURIComponent(clearOwner)}`)
+    await MotoristaDB.delete(`MotoristaConta:${encodeURIComponent(clearOther)}`)
     await MotoristaDB.delete('MotoristaConta')
   })
 
@@ -43,5 +54,19 @@ describe('isolamento do IndexedDB por conta', () => {
 
     await setDatabaseScope(owner)
     expect((await listRegistros()).map((item) => item.id)).toEqual(['legacy-record'])
+  })
+
+  it('limpa somente os dados da conta solicitada', async () => {
+    await setDatabaseScope(clearOwner)
+    await upsertRegistro(record('owner-record'))
+    await setDatabaseScope(clearOther)
+    await upsertRegistro(record('other-record'))
+
+    await clearUserData(clearOwner)
+    await setDatabaseScope(clearOwner)
+    expect(await listRegistros()).toEqual([])
+
+    await setDatabaseScope(clearOther)
+    expect((await listRegistros()).map((item) => item.id)).toEqual(['other-record'])
   })
 })

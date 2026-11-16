@@ -75,6 +75,59 @@ export async function setDatabaseScope(scope: string): Promise<void> {
   }
 }
 
+export async function clearUserData(scope: string): Promise<void> {
+  const normalized = scope.trim() || 'anonymous'
+  const scopedDb = activeScope === normalized
+    ? db
+    : new MotoristaDB(`MotoristaConta:${encodeURIComponent(normalized)}`)
+  const closeAfterClear = scopedDb !== db
+
+  if (closeAfterClear) await scopedDb.open()
+  try {
+    await scopedDb.transaction(
+      'rw',
+      scopedDb.registros,
+      scopedDb.manutencoes,
+      scopedDb.contasFixas,
+      scopedDb.categoriasManutencao,
+      async () => {
+        await Promise.all([
+          scopedDb.registros.clear(),
+          scopedDb.manutencoes.clear(),
+          scopedDb.contasFixas.clear(),
+          scopedDb.categoriasManutencao.clear(),
+        ])
+      },
+    )
+  } finally {
+    if (closeAfterClear) scopedDb.close()
+  }
+
+  if (localStorage.getItem('motoristaconta.legacyDataOwner') === normalized) {
+    const legacy = new MotoristaDB()
+    await legacy.open()
+    try {
+      await legacy.transaction(
+        'rw',
+        legacy.registros,
+        legacy.manutencoes,
+        legacy.contasFixas,
+        legacy.categoriasManutencao,
+        async () => {
+          await Promise.all([
+            legacy.registros.clear(),
+            legacy.manutencoes.clear(),
+            legacy.contasFixas.clear(),
+            legacy.categoriasManutencao.clear(),
+          ])
+        },
+      )
+    } finally {
+      legacy.close()
+    }
+  }
+}
+
 export async function listRegistros(): Promise<Registro[]> {
   return db.registros.orderBy('data').reverse().toArray()
 }

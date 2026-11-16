@@ -1,7 +1,10 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useData } from '../data/DataContext'
 import { useTheme } from '../theme/ThemeContext'
+import { useAuth } from '../auth/AuthContext'
+import { supabase } from '../services/supabase'
+import { AddTimeEntryForm } from '../components/AddTimeEntryForm'
 import { MetricCard } from '../components/MetricCard'
 import { PlatformFilterBar } from '../components/PlatformFilter'
 import { RegistroTable } from '../components/RegistroTable'
@@ -29,8 +32,10 @@ import type {
   CombustivelTipo,
   PeriodPreset,
   PlatformFilter,
+  PlatformTotal,
   Registro,
   RegistroInput,
+  TimeEntry,
 } from '../types'
 import { COMBUSTIVEL_LABEL } from '../types'
 
@@ -64,8 +69,11 @@ const PRESETS: PeriodPreset[] = [
   'anual',
 ]
 
+const EMPTY_TIME_ENTRIES: TimeEntry[] = []
+
 export function DashboardPage() {
   const { registros, manutencoes, contasFixas, saveRegistro, removeRegistro } = useData()
+  const { session } = useAuth()
   const { settings, updateSettings } = useTheme()
   const [preset, setPreset] = useState<PeriodPreset>('mensal')
   const [custom, setCustom] = useState<DateRange>({ start: todayISO(), end: todayISO() })
@@ -75,10 +83,75 @@ export function DashboardPage() {
   const [includeMaintenance, setIncludeMaintenance] = useState(false)
   const [chartView, setChartView] = useState<'summary' | 'evolution' | 'comparison'>('summary')
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
+  const [timeQuery, setTimeQuery] = useState<{
+    key: string
+    entries: TimeEntry[]
+    error: string | null
+  } | null>(null)
+  const [timeRefresh, setTimeRefresh] = useState(0)
 
   const range = useMemo(
     () => getPeriodRange(preset, new Date(), custom),
     [preset, custom],
+  )
+  const timeQueryKey = `${session?.supabaseUserId ?? ''}:${range.start}:${range.end}:${timeRefresh}`
+  const timeEntries = timeQuery?.key === timeQueryKey ? timeQuery.entries : EMPTY_TIME_ENTRIES
+  const timeError = timeQuery?.key === timeQueryKey ? timeQuery.error : null
+  const timeLoading = Boolean(
+    session?.supabaseUserId && supabase && timeQuery?.key !== timeQueryKey,
+  )
+
+  useEffect(() => {
+    let active = true
+    const userId = session?.supabaseUserId
+    if (!supabase || !userId) return
+
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('time_entries')
+          .select('id, user_id, platform, minutes_online, date, notes, created_at')
+          .eq('user_id', userId)
+          .gte('date', range.start)
+          .lte('date', range.end)
+          .order('date', { ascending: false })
+        if (error) throw error
+        if (active) {
+          setTimeQuery({ key: timeQueryKey, entries: (data ?? []) as TimeEntry[], error: null })
+        }
+      } catch (error) {
+        if (active) {
+          setTimeQuery({
+            key: timeQueryKey,
+            entries: [],
+            error: error instanceof Error ? error.message : 'Falha ao carregar o tempo online.',
+          })
+        }
+      }
+    })()
+
+    return () => { active = false }
+  }, [range.end, range.start, session?.supabaseUserId, timeQueryKey])
+
+  const platformTotals = useMemo(() => {
+    const totals = new Map<string, PlatformTotal>()
+    for (const entry of timeEntries) {
+      const current = totals.get(entry.platform) ?? {
+        platform: entry.platform,
+        total_minutes: 0,
+        total_hours: 0,
+        entries_count: 0,
+      }
+      current.total_minutes += entry.minutes_online
+      current.total_hours = current.total_minutes / 60
+      current.entries_count += 1
+      totals.set(entry.platform, current)
+    }
+    return [...totals.values()].sort((a, b) => a.platform.localeCompare(b.platform))
+  }, [timeEntries])
+  const totalOnlineMinutes = useMemo(
+    () => timeEntries.reduce((total, entry) => total + entry.minutes_online, 0),
+    [timeEntries],
   )
   const currentRows = useMemo(() => filterByRange(registros, range), [registros, range])
   const prevRange = useMemo(() => previousRange(range), [range])
@@ -594,6 +667,78 @@ export function DashboardPage() {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* Tempo online */}
+      <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div>
+          <h2 className="text-lg font-bold">Tempo online por plataforma</h2>
+          <p className="text-xs text-slate-500">
+            Registros entre {range.start} e {range.end}; o acesso fica restrito à sua conta.
+          </p>
+        </div>
+        {session?.supabaseUserId ? (
+          <AddTimeEntryForm
+            userId={session.supabaseUserId}
+            onSuccess={() => setTimeRefresh((current) => current + 1)}
+          />
+        ) : (
+          <p className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700">
+            Configure o login Supabase para registrar e sincronizar tempo online.
+          </p>
+        )}
+        {timeError ? (
+          <p role="alert" className="text-sm text-rose-600">
+            Não foi possível carregar os registros de tempo: {timeError}
+          </p>
+        ) : null}
+        {timeLoading ? (
+          <p role="status" className="text-sm text-slate-500">Carregando registros...</p>
+        ) : timeEntries.length > 0 ? (
+          <>
+            <p className="text-sm">
+              <span className="text-slate-500">Total no período:</span>{' '}
+              <strong>{Math.floor(totalOnlineMinutes / 60)} h {totalOnlineMinutes % 60} min</strong>
+            </p>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[32rem] text-left text-sm">
+                <thead className="border-b border-slate-200 text-xs text-slate-500 dark:border-slate-700">
+                  <tr>
+                    <th scope="col" className="py-2 pr-3">Plataforma</th>
+                    <th scope="col" className="py-2 pr-3">Total online</th>
+                    <th scope="col" className="py-2 pr-3">Registros</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {platformTotals.map((total) => (
+                    <tr key={total.platform} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                      <th scope="row" className="py-2 pr-3 font-medium">{total.platform}</th>
+                      <td className="py-2 pr-3">
+                        {Math.floor(total.total_minutes / 60)} h {total.total_minutes % 60} min
+                      </td>
+                      <td className="py-2 pr-3">{total.entries_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <details>
+              <summary className="cursor-pointer text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                Ver lançamentos ({timeEntries.length})
+              </summary>
+              <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-800">
+                {timeEntries.map((entry) => (
+                  <li key={entry.id} className="flex flex-wrap justify-between gap-2 py-2 text-sm">
+                    <span>{formatDateISO(entry.date)} · {entry.platform}</span>
+                    <span>{entry.minutes_online} min{entry.notes ? ` · ${entry.notes}` : ''}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          </>
+        ) : (
+          <p className="text-sm text-slate-500">Nenhum tempo online registrado neste período.</p>
+        )}
       </section>
 
       {/* SEÇÃO 1: COMBUSTÍVEL */}

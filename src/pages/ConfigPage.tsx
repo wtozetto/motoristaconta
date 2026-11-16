@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useData } from '../data/DataContext'
 import { useDrive } from '../drive/DriveContext'
@@ -18,10 +19,26 @@ import type { ThemePreference } from '../types'
 import { aggregateRegistros } from '../lib/calculations'
 import { getCombustivelValor } from '../lib/fuel'
 import { exportarRelatorioPDF } from '../utils/pdfExport'
-import { getLocalCategoriasManutencaoStamp } from '../drive/syncStorage'
+import {
+  CATEGORIAS_MANUTENCAO_STAMP_KEY,
+  getLocalCategoriasManutencaoStamp,
+  ULTIMA_MODIFICACAO_KEY,
+  ULTIMA_SINCRONIZACAO_KEY,
+} from '../drive/syncStorage'
+import { supabase, getAccessToken } from '../services/supabase'
+import { clearUserData } from '../db/database'
+import { SETTINGS_STORAGE_KEY } from '../settings/storage'
+import { clearDriveFileIds } from '../drive/fileIds'
+import {
+  ACESSOS_FILE_NAME,
+  DADOS_FILE_NAME,
+  deleteDriveFile,
+  findFileByName,
+} from '../drive/api'
 
 export function ConfigPage() {
-  const { session, logout } = useAuth()
+  const { session, logout, ensureDriveToken } = useAuth()
+  const navigate = useNavigate()
   const { settings, setTheme, updateSettings } = useTheme()
   const {
     registros,
@@ -42,6 +59,91 @@ export function ConfigPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null)
+
+  async function handleDeleteAccount() {
+    if (!supabase || !session?.supabaseUserId || deletingAccount) return
+
+    setDeletingAccount(true)
+    setDeleteAccountError(null)
+    let serverDeleted = false
+    let driveFilesRemoved = false
+    try {
+      if (session.googleId !== session.supabaseUserId) {
+        const driveToken = await ensureDriveToken('')
+        for (const name of [DADOS_FILE_NAME, ACESSOS_FILE_NAME]) {
+          const file = await findFileByName(driveToken, name)
+          if (file) {
+            await deleteDriveFile(driveToken, file.id)
+            driveFilesRemoved = true
+          }
+        }
+      }
+
+      const accessToken = await getAccessToken()
+      const response = await fetch('/api/delete-account', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      const result: unknown = await response.json()
+      if (
+        !response.ok
+        || typeof result !== 'object'
+        || result === null
+        || !('success' in result)
+        || result.success !== true
+      ) {
+        const message =
+          typeof result === 'object' && result !== null && 'error' in result && typeof result.error === 'string'
+            ? result.error
+            : 'Não foi possível excluir a conta.'
+        throw new Error(message)
+      }
+      serverDeleted = true
+
+      await clearUserData(session.googleId)
+      const encodedScope = encodeURIComponent(session.googleId)
+      for (const key of [
+        SETTINGS_STORAGE_KEY,
+        ULTIMA_MODIFICACAO_KEY,
+        ULTIMA_SINCRONIZACAO_KEY,
+        CATEGORIAS_MANUTENCAO_STAMP_KEY,
+      ]) {
+        localStorage.removeItem(`${key}.${encodedScope}`)
+      }
+      if (localStorage.getItem('motoristaconta.legacyDataOwner') === session.googleId) {
+        localStorage.removeItem('motoristaconta.legacyDataOwner')
+        localStorage.removeItem(SETTINGS_STORAGE_KEY)
+        localStorage.removeItem(ULTIMA_MODIFICACAO_KEY)
+        localStorage.removeItem(ULTIMA_SINCRONIZACAO_KEY)
+        localStorage.removeItem(CATEGORIAS_MANUTENCAO_STAMP_KEY)
+        localStorage.removeItem(`motoristaconta.legacyDataMigrated:${encodedScope}`)
+      }
+      clearDriveFileIds(session.googleId)
+      logout()
+      navigate('/login', { replace: true })
+    } catch (error) {
+      setDeleteAccountError(
+        serverDeleted
+          ? 'A conta foi excluída, mas não foi possível limpar todos os dados locais. Remova os dados deste dispositivo nas configurações do navegador.'
+          : driveFilesRemoved
+            ? `Os arquivos do Google Drive foram removidos, mas a conta ainda não foi excluída. ${error instanceof Error ? error.message : ''}`
+            : error instanceof Error ? error.message : 'Não foi possível excluir a conta.',
+      )
+      if (serverDeleted) {
+        window.alert(
+          'A conta foi excluída, mas não foi possível limpar todos os dados locais. Remova os dados deste dispositivo nas configurações do navegador.',
+        )
+        logout()
+        navigate('/login', { replace: true })
+      }
+    } finally {
+      setDeletingAccount(false)
+      setDeleteAccountOpen(false)
+    }
+  }
 
   function exportJson() {
     const json = backupToJson(
@@ -430,6 +532,54 @@ export function ConfigPage() {
           Sair
         </button>
       </section>
+
+      {/* Exclusão da conta */}
+      <section className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4 dark:border-rose-900 dark:bg-rose-950/20">
+        <h2 className="font-semibold text-rose-700 dark:text-rose-300">Zona de perigo</h2>
+        <p className="mt-2 text-sm text-rose-700 dark:text-rose-200">
+          Excluir a conta remove permanentemente o perfil, os dados sincronizados com o app, os
+          registros deste dispositivo e, se houver uma conta Google vinculada, os arquivos do
+          MotoristaConta no Drive.
+        </p>
+        {supabase && session?.supabaseUserId ? (
+          <button
+            type="button"
+            disabled={deletingAccount}
+            onClick={() => {
+              setDeleteAccountError(null)
+              setDeleteAccountOpen(true)
+            }}
+            className="mt-3 h-11 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white hover:bg-rose-500 disabled:opacity-60"
+          >
+            {deletingAccount ? 'Excluindo conta...' : 'Excluir minha conta e dados'}
+          </button>
+        ) : (
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            A exclusão da conta requer uma sessão Supabase ativa.
+          </p>
+        )}
+        {deleteAccountError ? (
+          <p role="alert" className="mt-3 text-sm text-rose-700 dark:text-rose-300">
+            {deleteAccountError}
+          </p>
+        ) : null}
+      </section>
+
+      <ConfirmDialog
+        open={deleteAccountOpen}
+        title="Excluir conta permanentemente?"
+        confirmLabel={deletingAccount ? 'Excluindo...' : 'Excluir tudo'}
+        danger
+        confirmDisabled={deletingAccount}
+        onCancel={() => {
+          if (!deletingAccount) setDeleteAccountOpen(false)
+        }}
+        onConfirm={() => void handleDeleteAccount()}
+      >
+        Esta ação não pode ser desfeita. O perfil e os registros serão apagados do sistema e deste
+        dispositivo. Se houver uma conta Google vinculada, os arquivos do MotoristaConta no Drive
+        também serão removidos.
+      </ConfirmDialog>
 
       <ConfirmDialog
         open={Boolean(importMode && pendingPayload)}
