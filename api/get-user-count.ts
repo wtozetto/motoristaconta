@@ -19,15 +19,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const supabase = createClient(supabaseUrl, serviceRoleKey)
-    const { data, error } = await supabase
-      .from('contador')
-      .select('total')
-      .eq('id', 'usuarios')
-      .single()
+    const { data, error } = await supabase.rpc('get_total_users')
 
     if (error) throw error
 
-    return res.status(200).json({ success: true, total: data.total ?? 0 })
+    return res.status(200).json({ success: true, total: data ?? 0 })
   } catch (error) {
     console.error('Erro ao buscar contador:', error)
     return res.status(500).json({ success: false, error: 'Counter unavailable' })
