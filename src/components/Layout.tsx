@@ -15,6 +15,7 @@ const LINKS = [
   { to: '/categorias', label: 'Categorias' },
   { to: '/lembretes', label: 'Lembretes' },
   { to: '/configuracoes', label: 'Configurações' },
+  { to: '/assinatura', label: 'Meu Plano' },
 ]
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {

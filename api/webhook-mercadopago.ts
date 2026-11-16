@@ -123,13 +123,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const preapproval = await mercadoPagoResource(accessToken, `/preapproval/${encodeURIComponent(dataId)}`)
       let { data: subscription, error } = await clients.admin
         .from('subscriptions')
-        .select('id, user_id, status')
+        .select('id, user_id, status, canceled_at')
         .eq('mercadopago_subscription_id', dataId)
         .maybeSingle()
       if (error) throw error
       if (!subscription && typeof preapproval.external_reference === 'string') {
         const fallback = await clients.admin.from('subscriptions')
-          .select('id, user_id, status')
+          .select('id, user_id, status, canceled_at')
           .eq('id', preapproval.external_reference)
           .maybeSingle()
         if (fallback.error) throw fallback.error
@@ -139,12 +139,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const mpStatus = preapproval.status === 'authorized' ? 'active'
         : preapproval.status === 'cancelled' ? 'canceled'
         : 'pending'
+      const cancellationScheduled = subscription.status === 'active' && subscription.canceled_at !== null
       const { error: updateError } = await clients.admin.from('subscriptions').update({
-        status: mpStatus,
+        status: cancellationScheduled && mpStatus === 'canceled' ? 'active' : mpStatus,
         next_billing_date: typeof preapproval.next_payment_date === 'string'
           ? preapproval.next_payment_date
           : undefined,
-        canceled_at: mpStatus === 'canceled' ? new Date().toISOString() : null,
+        canceled_at: cancellationScheduled
+          ? subscription.canceled_at
+          : mpStatus === 'canceled' ? new Date().toISOString() : null,
         updated_at: new Date().toISOString(),
       }).eq('id', subscription.id)
       if (updateError) throw updateError
