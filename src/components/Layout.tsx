@@ -27,7 +27,7 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
           to={link.to}
           onClick={onNavigate}
           className={({ isActive }) =>
-            `flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-3 py-2 text-xs font-semibold sm:flex-none sm:flex-row sm:gap-2 sm:text-sm ${
+            `min-w-0 flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-2 text-xs font-semibold sm:flex-none sm:flex-row sm:gap-2 sm:px-3 sm:text-sm ${
               isActive
                   ? 'app-nav-active'
                   : 'app-nav-idle'

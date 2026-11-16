@@ -25,6 +25,7 @@ export function SubscriptionPage() {
   const [confirmCancel, setConfirmCancel] = useState(false)
   const navigate = useNavigate()
   const currentPlan = subscription?.plans?.[0]
+    ?? plans.find((plan) => plan.id === subscription?.plan_id)
   const cancellationRequested = subscription?.status === 'active'
     && subscription.canceled_at !== null
   const cancellationScheduled = cancellationRequested
