@@ -41,6 +41,12 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 function initialSession(): GoogleSession | null {
   const loaded = loadSession()
   if (!loaded || !isAuthenticated(loaded)) return null
+  if (
+    loaded.googleId === 'dev-bypass'
+    && (!import.meta.env.DEV || import.meta.env.VITE_DEV_BYPASS_AUTH !== 'true')
+  ) {
+    return null
+  }
   if (loaded.googleId !== 'dev-bypass') {
     try {
       if (!localStorage.getItem('motoristaconta.legacyDataOwner')) {
@@ -211,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const loginDevBypass = useCallback(() => {
+    if (!import.meta.env.DEV || import.meta.env.VITE_DEV_BYPASS_AUTH !== 'true') return
     const next: GoogleSession = {
       googleId: 'dev-bypass',
       name: 'Motorista (teste)',

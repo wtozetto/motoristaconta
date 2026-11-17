@@ -32,7 +32,7 @@ npm run preview
 | Variável | Obrigatória | Uso |
 | --- | --- | --- |
 | `VITE_GOOGLE_CLIENT_ID` | Sim, para login real | Client ID OAuth do tipo *Aplicativo da Web* |
-| `VITE_DEV_BYPASS_AUTH` | Não | Só testes locais. `true` mostra “Entrar em modo de teste”. **Nunca** use isso em produção. |
+| `VITE_DEV_BYPASS_AUTH` | Não | Só testes locais. `true` mostra “Entrar em modo de teste” apenas durante o desenvolvimento e nunca habilita o bypass no build de produção. |
 | `SUPABASE_URL` | Sim | URL do projeto Supabase; também é fallback de build para o frontend |
 | `SUPABASE_ANON_KEY` | Sim | Chave pública anon; fallback de build e validação de sessão nas APIs |
 | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` | Opcional | Sobrescrevem os valores públicos Supabase usados pelo frontend |

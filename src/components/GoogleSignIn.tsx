@@ -8,7 +8,7 @@ export function GoogleSignIn() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-  const allowBypass = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
+  const allowBypass = import.meta.env.DEV && import.meta.env.VITE_DEV_BYPASS_AUTH === 'true'
 
   useEffect(() => {
     let active = true
