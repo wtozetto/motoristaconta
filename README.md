@@ -2,6 +2,10 @@
 
 Aplicação para motoristas de Uber, 99 e Indrive acompanharem ganhos, km, gastos e lucro.
 
+## Segurança
+
+O projeto mantém o [Certificado de Análise de Segurança](./CERTIFICADO-SEGURANCA.md), emitido em 17 de novembro de 2026. O documento registra o resultado da análise, seu escopo e suas limitações; não constitui certificação oficial ou auditoria regulatória independente.
+
 - **Dados pessoais no navegador.** IndexedDB (Dexie) + LocalStorage.
 - **Contador de usuários:** função serverless consulta o Supabase e atualiza o número exibido no login a cada 5 minutos.
 - **Google Drive automático:** sincroniza no login, após alterações e a cada 5 minutos. Lançamentos, manutenções, vencimentos e preferências são salvos em `MotoristaConta-dados.json` na **sua** conta. Também anexa acessos em `MotoristaConta-acessos.json`. Exportar JSON/CSV no aparelho continua disponível.
